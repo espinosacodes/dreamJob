@@ -13,4 +13,11 @@
 # Personal resume material — keep private
 *.pdf
 *.docx
+*.doc
 resume-drafts/
+
+# Shared state the resume skills write (contains your actual resume)
+resume-workspace/
+
+# Machine-specific skill context: account IDs, paths, credential locations
+LOCAL_CONTEXT.md

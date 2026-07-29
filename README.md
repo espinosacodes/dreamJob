@@ -49,14 +49,14 @@ The matcher is driven by a single profile:
 
 ## The resume agent
 
-This is the part that already exists. Four skills, each a prompt in [`skills/`](skills/), which the apply stage runs in sequence per application:
+This is the part that already exists. Four skills in [`skills/`](skills/), which the apply stage runs in sequence per application:
 
 | Skill | Role in the pipeline |
 | --- | --- |
-| [`resume-diagnoser`](skills/resume-diagnoser/SKILL.md) | Baseline ATS audit of your master resume — run once, fix what it finds. |
-| [`resume-recruiter`](skills/resume-recruiter/SKILL.md) | Extracts the keywords a specific posting is really screening for, and which ones you're missing. |
+| [`resume-diagnoser`](skills/resume-diagnoser/SKILL.md) | Baseline ATS audit of your master resume — run once, fix what it finds. Scores parse-safety, keyword coverage, and impact separately. |
+| [`resume-recruiter`](skills/resume-recruiter/SKILL.md) | Extracts the keywords a specific posting is really screening for, and which ones you're missing. Given a role instead of a posting, it samples 8–12 live listings and reports the market. |
 | [`resume-rewriter`](skills/resume-rewriter/SKILL.md) | Rewrites your bullets against those keywords using the XYZ formula — "Accomplished X as measured by Y, by doing Z". |
-| [`resume-hiring-manager`](skills/resume-hiring-manager/SKILL.md) | Mock interview for the roles that reply. Not automated — you run this yourself. |
+| [`resume-hiring-manager`](skills/resume-hiring-manager/SKILL.md) | Mock interview for the roles that reply, grounded in your own bullets. Not automated — you run this yourself. |
 
 They work standalone in Claude Code today. Point Claude at a posting and your resume:
 
@@ -64,9 +64,11 @@ They work standalone in Claude Code today. Point Claude at a posting and your re
 /resume-recruiter
 ```
 
-Each one asks for what it needs (target role, industry, seniority, resume text) one question at a time, so invoking it bare is fine.
+Each one finds your resume on its own — a path, a `*resume*` / `*cv*` file in the current directory, or pasted text, with PDF and `.docx` extracted automatically — and asks for whatever else it needs (target role, industry, seniority) one question at a time. Invoking bare is fine.
 
-**The agent never invents numbers.** If a posting wants a metric you haven't given it, it asks. Anything estimated is marked `[estimate, verify before sending]` and it stays your job to verify — a fabricated metric on a resume is a fireable offense discovered later.
+**State passes through a `resume-workspace/` folder** created wherever you run them: `profile.md` and `resume.md` are written by whichever skill runs first, then `diagnosis.md` → `keywords.md` → `bullets-rewritten.md` → `interview-log.md` as each stage feeds the next. So you answer the intake questions once, and the apply pipeline gets a defined handoff between stages rather than copy-paste. The folder is gitignored — it holds your actual resume.
+
+**The agent never invents numbers.** Before rewriting, it lists every bullet lacking a metric and asks you for all of them in one batch. For anything you can't recall it offers a relative framing ("cut deploy time from hours to minutes"), a scope framing, or an explicit `[verify before sending]` placeholder. It only writes a numeric estimate if you ask, marked `[estimate, verify before sending]` — a fabricated metric on a resume is a fireable offense discovered later. Same rule on keywords: it won't suggest one your actual work can't support, so there's nothing to stuff.
 
 ## Roadmap
 
