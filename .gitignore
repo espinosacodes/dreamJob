@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+._*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Local Claude Code state
+.claude/settings.local.json
+
+# Personal resume material — keep private
+*.pdf
+*.docx
+resume-drafts/
