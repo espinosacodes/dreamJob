@@ -1,65 +1,104 @@
 # dreamJob
 
-A set of [Claude Code](https://claude.com/claude-code) skills for landing the job — resume diagnosis, keyword research, bullet rewriting, and mock interviews — plus a project rubric tracker.
+Swipe through every job that actually matches you, and let an AI agent tailor your resume to each one before it applies.
 
-Each skill is a folder containing a single `SKILL.md`. Claude Code loads the skill automatically when your request matches its `description`, or you can invoke it explicitly with a slash command.
+> **Status: early.** The resume-tailoring brain exists today as four Claude Code skills in [`skills/`](skills/). The aggregator, the swipe UI, and the apply pipeline are not built yet. Everything below the "How it works" heading is the plan, not shipped software.
 
-## Skills
+## The problem
 
-| Skill | What it does |
+Applying to jobs is three chores stacked on top of each other:
+
+1. **Finding them.** Postings are scattered across LinkedIn, Indeed, and thousands of company boards. The aggregators that do exist bury remote/hybrid/onsite filters and lie about location.
+2. **Deciding.** Reading a full job description to learn it's onsite in another country is a 90-second tax, paid hundreds of times.
+3. **Tailoring.** A generic resume gets screened out. Rewriting it per application is the step everyone skips, and it's the step that decides the outcome.
+
+dreamJob collapses all three into a swipe.
+
+## How it works
+
+```
+┌─────────────┐    ┌──────────┐    ┌────────────┐    ┌─────────┐
+│  Aggregate  │ -> │  Match   │ -> │   Swipe    │ -> │  Apply  │
+└─────────────┘    └──────────┘    └────────────┘    └─────────┘
+  pull postings     score against    tinder-style      agent tailors
+  from many         your prefs,      deck, one card    resume + cover
+  sources           drop the rest    per job           letter, submits
+```
+
+**1. Aggregate.** Poll job sources on a schedule, normalize every posting into one shape (title, company, work mode, location, comp, seniority, stack, apply URL), and deduplicate — the same role gets cross-posted five places.
+
+**2. Match.** Score each posting against your preferences and discard anything below the bar, so the deck stays short enough to actually finish.
+
+**3. Swipe.** One card per job: title, company, comp, work mode, location, and the three bullets that matter. Swipe right to apply, left to skip. Swiping left is training data — the matcher learns what you keep rejecting.
+
+**4. Apply.** For every right-swipe, an agent reads the job description, tailors your resume to it, drafts a cover letter, and submits. Each application is archived so you know exactly what you sent where.
+
+## Preferences
+
+The matcher is driven by a single profile:
+
+| Field | Example |
 | --- | --- |
-| [`resume-diagnoser`](resume-diagnoser/SKILL.md) | Audits a resume the way a real ATS would. Flags parsing killers, weak sections, and missing signals, then ranks the top 5 fixes by impact. |
-| [`resume-recruiter`](resume-recruiter/SKILL.md) | Recruiter's-eye keyword research: the top 15 keywords in live job posts for your target role, which ones your resume is missing, trending skills, and buzzwords to cut. |
-| [`resume-rewriter`](resume-rewriter/SKILL.md) | Rewrites every experience bullet using Google's XYZ formula — "Accomplished X as measured by Y, by doing Z" — with metrics and action verbs. |
-| [`resume-hiring-manager`](resume-hiring-manager/SKILL.md) | Runs a mock interview as the hiring manager for your target role. Scores each answer out of 10 and ends with a hireability score and study plan. |
-| [`circleguard-checklist`](circleguard-checklist/SKILL.md) | Reads and updates the IngeSoft V rubric checklist for the CircleGuard final project. |
+| **Work mode** | `remote`, `hybrid`, `onsite` — with a max commute or timezone band |
+| **Roles** | `swe`, `backend`, `devops`, `platform`, `sre`, `data` |
+| **Locations** | countries, cities, or timezone ranges for remote |
+| **Seniority** | junior, mid, senior, staff |
+| **Comp floor** | minimum salary, currency-aware |
+| **Stack** | languages and tools you want to work in — and ones you refuse |
+| **Dealbreakers** | visa sponsorship required, no on-call, no clearance, company blocklist |
 
-### Suggested order
+## The resume agent
 
-The resume skills chain naturally:
+This is the part that already exists. Four skills, each a prompt in [`skills/`](skills/), which the apply stage runs in sequence per application:
 
-```
-resume-diagnoser  →  resume-recruiter  →  resume-rewriter  →  resume-hiring-manager
-   what's broken      what's missing       fix the bullets      rehearse the interview
-```
+| Skill | Role in the pipeline |
+| --- | --- |
+| [`resume-diagnoser`](skills/resume-diagnoser/SKILL.md) | Baseline ATS audit of your master resume — run once, fix what it finds. |
+| [`resume-recruiter`](skills/resume-recruiter/SKILL.md) | Extracts the keywords a specific posting is really screening for, and which ones you're missing. |
+| [`resume-rewriter`](skills/resume-rewriter/SKILL.md) | Rewrites your bullets against those keywords using the XYZ formula — "Accomplished X as measured by Y, by doing Z". |
+| [`resume-hiring-manager`](skills/resume-hiring-manager/SKILL.md) | Mock interview for the roles that reply. Not automated — you run this yourself. |
 
-`resume-rewriter` takes the missing-keywords list from `resume-recruiter` as input, so run them in that order for best results.
-
-## Install
-
-Clone into your personal skills directory so the skills are available in every project:
-
-```bash
-git clone git@github.com:espinosacodes/dreamJob.git
-cp -R dreamJob/*/ ~/.claude/skills/
-```
-
-Or symlink an individual skill:
-
-```bash
-ln -s "$PWD/resume-diagnoser" ~/.claude/skills/resume-diagnoser
-```
-
-Project-scoped instead of global? Use `.claude/skills/` inside the project repo.
-
-## Usage
-
-Start Claude Code and either describe what you want or call the skill directly:
+They work standalone in Claude Code today. Point Claude at a posting and your resume:
 
 ```
-/resume-diagnoser
+/resume-recruiter
 ```
 
-```
-Why isn't my resume getting interviews? Target role: Senior Backend Engineer.
-```
+Each one asks for what it needs (target role, industry, seniority, resume text) one question at a time, so invoking it bare is fine.
 
-Every resume skill asks for the details it needs — target role, industry, seniority, and your resume text — one at a time before it starts, so you can invoke it with no arguments.
+**The agent never invents numbers.** If a posting wants a metric you haven't given it, it asks. Anything estimated is marked `[estimate, verify before sending]` and it stays your job to verify — a fabricated metric on a resume is a fireable offense discovered later.
 
-## Notes
+## Roadmap
 
-- `circleguard-checklist` points at an absolute path (`~/Documents/swe5/circle-guard-public/docs/RUBRIC_CHECKLIST.md`). Adjust it if your checkout lives elsewhere.
-- The resume skills never invent metrics. Where a number is estimated it is marked `[estimate, verify before sending]` — always verify before you send the resume out.
+- [ ] **M1 — Aggregator.** One source end to end (Greenhouse), normalized schema, stored postings, dedup.
+- [ ] **M2 — Preferences + matcher.** Profile schema, scoring, filtered deck.
+- [ ] **M3 — Swipe UI.** Card deck, keyboard and touch, left-swipes recorded.
+- [ ] **M4 — Tailoring.** Wire the skills into a per-application agent run. Human reviews the output before send.
+- [ ] **M5 — Submission.** Automated submit for sources with a real application API. Everything else hands you a prefilled draft.
+- [ ] **M6 — Tracking.** Application archive, status, follow-up reminders.
+- [ ] **M7 — Learning.** Feed swipe history and reply rates back into matching.
+
+## Job sources
+
+Not all sources can be automated, and this matters more than it looks:
+
+| Source | Ingest | Submit |
+| --- | --- | --- |
+| Greenhouse, Lever, Ashby, Workable | Public job board APIs | Documented application endpoints |
+| Company career pages | Per-site scraping | Prefilled draft, you click send |
+| LinkedIn, Indeed | Official APIs are gated | **No.** Automating Easy Apply violates their terms and gets accounts banned |
+
+Build order follows that table: the ATS platforms first, because they're the ones that actually permit this.
+
+## Design decisions
+
+- **Human in the loop through M5.** Auto-submitting a tailored resume you haven't read is how you send the wrong company's name to a recruiter. Review stays mandatory until the tailoring output is boringly reliable.
+- **Quality over volume.** The goal is 20 strong tailored applications a week, not 500 spray-and-pray ones. Mass low-effort applying is exactly what ATS filters are tuned to catch.
+- **Respect the sources.** Rate-limit ingestion, honor `robots.txt`, and skip any platform whose terms forbid automated applications rather than working around them. A banned LinkedIn account costs more than the automation saves.
+
+## Contributing
+
+Not yet — the schema is still moving. Open an issue if you want a source supported.
 
 ## License
 
