@@ -4,6 +4,8 @@
 
 The frontend is **Flutter, mobile-first**. One codebase for the swipe deck, the review queue, and the tracker, running on a phone and talking to the Dart backend over the LAN.
 
+**The phone is the entire UX. Everything else is machinery.** Ingestion, matching, the tailoring agent, the browser agent, the credential vault and the mailbox all run on the server and have no interface of their own — the Playwright window in [14](14-browser-agent.md) is not a UI surface, it is a subprocess that happens to be visible. Every decision those subsystems need from a human is rendered in this app, on a phone, over the LAN. If a flow can only be completed by sitting at the server, it is unfinished.
+
 ## Platform targets
 
 | Target | Priority | Notes |
@@ -32,6 +34,10 @@ lib/
   features/
     deck/               # swipe deck — cards, gestures, controller
     review/             # review queue, resume diff, approval gate
+    submit/             # M5b: submit gate — form screenshot, field table, Submit
+    challenges/         # M5a: verification codes, unanswered form questions
+    answers/            # M5a: AnswerBook editor (14)
+    accounts/           # M5a: site accounts, mailbox connection, revocation (15, 16)
     applications/       # tracker, timeline, follow-ups
     profile/            # profile editor
   shared/
@@ -42,6 +48,21 @@ test/
 ```
 
 **`core/models/` re-exports `dreamjob_shared`.** The app never declares its own `JobPosting`. That shared package is the whole reason the backend is Dart ([02](02-architecture.md)); redefining a model here throws it away.
+
+### The four backend flows the phone has to surface
+
+Everything from M5 onward is a background subsystem that occasionally needs a human. Each one gets a screen, and none of them may require the server's display.
+
+| Flow | Screen | Constraint it imposes on the app |
+| --- | --- | --- |
+| **Submit gate** ([14](14-browser-agent.md)) | `submit/` — full-width form screenshot, pinch-zoomable, plus the read-back field table and the attached filename with its hash tick | The screenshot is the artifact being approved, so image quality and zoom are functional requirements, not polish. **Submit** mints the human token; it is never pre-armed and there is no "submit all" |
+| **Verification code** ([15](15-accounts-identity.md), [16](16-mailbox.md)) | `challenges/` — the asking domain shown *above* the input, six-digit entry, 5-minute countdown | Time-critical and interruptive. The domain must be visible before the keyboard opens, because "type a code you received into an app" is otherwise a phishing shape |
+| **Unanswered form question** ([14](14-browser-agent.md)) | `challenges/` — the question quoted verbatim, free input, "save for future applications" defaulted on | The answer is written back to the `AnswerBook`, so this screen is how that file grows. It must never present a suggested answer |
+| **Accounts & connections** ([15](15-accounts-identity.md), [16](16-mailbox.md)) | `accounts/` — employer accounts, the mailbox grant, per-site status, revocation | Read-and-revoke only. **No password is ever displayed, transmitted to the phone, or entered here** ([09](09-compliance.md)) |
+
+**Runs that need a human start only when a human is present.** A registration or submission that can raise a challenge is kicked off from an app session, not by the scheduler — the 5-minute code window is unwinnable otherwise, and it removes any need for a push service. Background work with no human in it (ingestion, matching, tailoring, mailbox sync) stays on the server's own schedule.
+
+**Two additions to the offline rules.** A queued challenge that expires while the phone is unreachable fails cleanly and is retried later; it is never resolved without the user. And the app must render a `needs_attention` application usefully — halt reason, quoted question, last screenshot — because that is the state the user lands in whenever the phone genuinely cannot resolve something.
 
 **Packages** — each verify the maintained version before adopting:
 
@@ -174,4 +195,6 @@ The trap to avoid: porting a React component's *implementation* into Flutter. Ta
 - **Dark mode only, or both?** A deck app used in evening bursts has a case for dark-first; both doubles the golden-test surface.
 - Is a custom `analyzer` lint banning raw colours and durations outside tokens worth building, given Impeccable's detector can't see Flutter output?
 - Rive vs a hand-built `CustomPainter` for the card-stack flourishes — Rive adds a runtime and an asset pipeline for what may be three animations.
-- Does the app need push notifications ("12 new matches")? It's the obvious mobile affordance and it drags in a push service, which is a new third party for [09](09-compliance.md) to rule on.
+- Does the app need push notifications ("12 new matches")? It's the obvious mobile affordance and it drags in a push service, which is a new third party for [09](09-compliance.md) to rule on. Note the verification challenges no longer force this: runs that can raise one are user-initiated from a live app session, so an in-app prompt is sufficient.
+- Golden tests are specified for the card. Does the submit-gate screen deserve them too? It renders a server-supplied screenshot, so its own layout is simple — but it is the last thing a user sees before an application leaves.
+- The submit gate and the deck have opposite tempos: the deck is optimised for a five-minute swipe session, the gate for slowing down and reading. Do they share motion tokens, or does the gate deliberately use the `deliberate` duration everywhere?

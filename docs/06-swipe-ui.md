@@ -101,9 +101,11 @@ Browser submissions get a second screen, after content approval and before the c
 - The final screenshot of the filled form, full width, pinch-zoomable. This is the thing being approved.
 - A field table: label → the value that is actually in the DOM after read-back, with the `AnswerBook` key it came from. Fields filled by the semantic-map tier are marked; fields filled from a recipe are not, because those are the boring ones.
 - The attached filename, and a tick confirming its hash matches the tailored artifact. **This is the check that catches an ATS candidate profile silently substituting its own stored resume** ([15](15-accounts-identity.md)).
-- Actions: **Submit**, **Fix in browser** (hands the user the live headed browser), **Abandon**.
+- Actions: **Submit**, **Fix in browser**, **Abandon**.
 
 Rules: **Submit** is the only control that mints the human token, it is never pre-armed, and there is no "submit all". A run with any unverified field cannot reach this screen at all.
+
+This screen is designed to be sufficient **on the phone, from anywhere on the LAN** — the server can be headless in another room. **Fix in browser** hands the live headed browser to whoever is physically at the server; from the phone it is an explicit "park this until I'm at my machine", and it says so rather than pretending to open something.
 
 ## Interruptions
 
@@ -115,6 +117,8 @@ Two things can now interrupt the user mid-flow. Both are notifications, both nam
 | **Unanswered question** | A required form field with no `AnswerBook` key ([14](14-browser-agent.md)) | The question quoted verbatim, an input, and "save this answer for future applications" defaulted on |
 
 Both park the application rather than blocking the deck. The user can keep swiping while a run waits.
+
+Runs that can raise either prompt are started from a live app session, never by the scheduler — a 5-minute code window the user isn't present for is a run that fails by construction, and making them user-initiated is what keeps a push service out of [09](09-compliance.md).
 
 ## Accessibility and presentation
 

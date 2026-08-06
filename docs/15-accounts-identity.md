@@ -79,7 +79,7 @@ sidecar hits an SMS challenge
    ▼
 VerificationChallenge{kind: sms, domain, expiresAt: +5min}  → server
    ▼
-push notification to the Flutter app: "Acme Workday wants an SMS code"
+in-app prompt on the Flutter app: "Acme Workday wants an SMS code"
    ▼
 user reads their own SMS, types 6 digits into the app
    ▼

@@ -104,6 +104,7 @@ The prerequisites for applying anywhere that isn't an API. Independently useful:
 - [ ] An email verification code is extracted by regex, used once, and never persisted.
 - [ ] A magic link whose host differs from the run's domain is refused.
 - [ ] An SMS challenge reaches the phone, names the requesting domain, expires at 5 minutes, and the code is never stored.
+- [ ] No flow added by M5a requires the server's display: registration approval, challenges, unanswered questions and account management all complete in the app.
 - [ ] Disconnecting the mailbox deletes the stored messages and the token together.
 
 ## M5b — Submission
@@ -121,6 +122,7 @@ The prerequisites for applying anywhere that isn't an API. Independently useful:
 - [ ] An unmappable required field halts with the question quoted and writes the user's answer back to `answers.yaml`.
 - [ ] The model never emits a form value — only `AnswerBook` keys. Verified by the plan schema rejecting literals.
 - [ ] Passwords are scrubbed from every archived Playwright trace.
+- [ ] The entire submit flow — screenshot, field table, filename check, tap to submit — is completable from the phone with the server headless in another room.
 - [ ] A submit with neither confirmation signal lands in `submit_unverified` and is never auto-retried.
 - [ ] A submit failure never auto-retries; status and apply URL surfaced.
 - [ ] Duplicate detection blocks a second application to the same role within 90 days.

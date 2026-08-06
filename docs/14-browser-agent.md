@@ -34,7 +34,7 @@ Rules on the sidecar:
 
 - Binds `127.0.0.1` only. It holds live logged-in sessions to employer systems; it is never reachable from the LAN, unlike the JSON API ([09](09-compliance.md)).
 - Started and stopped by the Dart server as a child process. A crashed sidecar fails the application to `needs_attention`; it never leaves an orphaned browser holding a half-filled form.
-- **Headed by default.** The user can watch. Headless is allowed only for the dry-run mode below, never for a run that will submit.
+- **Headed by default**, but the browser window is not a UI surface. The product's only UI is the Flutter app ([11](11-frontend.md)); the browser is headed so that screenshots are real and so a human physically at the server *can* take over, not because anyone is expected to be watching it. Headless is allowed only for the dry-run mode below, never for a run that will submit.
 - One `BrowserContext` per site profile, backed by a persistent `user-data-dir` under `~/.dreamjob/browser/<profile>/`, so a session survives across applications and the user logs in once per employer tenant rather than once per application.
 - Hard ceilings per run, enforced by the sidecar and not by the plan: 10 minutes wall clock, 40 navigations, 200 actions. Exceeding any of them aborts to `needs_attention` with the trace kept.
 
@@ -113,7 +113,9 @@ plan ──> navigate ──> [login? 15] ──> fill ──> upload ──> ve
 
 **Plan.** Dart builds it from the recipe + the application: target URL, artifact paths, the account to use, and the expected confirmation signal. The plan is data; the sidecar executes it. A plan with no `humanConfirm` guard is rejected by the sidecar before the browser opens.
 
-**Dry run.** Every new site is first executed with `submit.enabled = false`: fill everything, screenshot, archive, do not press submit. This is how a recipe gets written and how the user sees what would have been sent. Dry runs may be headless; they are the only runs that may.
+**Dry run.** Every new site is first executed with `submit.enabled = false`: fill everything, screenshot, archive, do not press submit. This is how a recipe gets written and how the user sees — on their phone, from the archived screenshots — what would have been sent. Dry runs may be headless; they are the only runs that may.
+
+**Everything a run produces is phone-consumable.** Screenshots, the field table, the halt reason, the quoted question. A run that can only be understood by looking at the live browser is a run that has failed to report itself, and that is a bug in the sidecar rather than a reason to sit at the server.
 
 **Verify before the gate.** After filling, the sidecar reads every field back out of the DOM and diffs it against the intended values. A field that did not take the value it was given (masked inputs, JS-controlled selects, autocompletes that rewrote the entry) fails the run rather than being submitted with whatever the widget decided.
 
@@ -135,12 +137,14 @@ The trace is what makes "what exactly did it send" answerable six months later. 
 
 The review gate in [07](07-apply-pipeline.md) §5 approves *content*. This gate approves *the actual form*, and they are not the same check — the content can be perfect and the form still have dropped the resume upload or mangled the phone field.
 
-Through M6, the click is human. Two shapes, both acceptable:
+Through M6, the click is human — and **the human is on their phone**. The product's UX lives entirely in the Flutter app; the server, the sidecar and the browser are back-end machinery the user never has to be sitting in front of.
 
-| Mode | Flow | Default for |
+| Mode | Flow | Used for |
 | --- | --- | --- |
-| **Attended** | The headed browser is on the user's screen at the filled form. The user reviews and clicks submit themselves. The sidecar detects the navigation and takes over for confirmation and archival. | Any first application to a new site; anything that required tier 3 |
-| **Assisted** | The app shows the final screenshot plus the `filled.json` table on the phone. The user taps **Submit** there; the sidecar clicks. | Sites with a green recipe and ≥3 successful prior submissions |
+| **Assisted — the default** | The app shows the final screenshot plus the `filled.json` table on the phone. The user reviews and taps **Submit** there; the sidecar clicks. Works from anywhere on the LAN, with the server headless in another room | Every submission, including the first to a new site |
+| **Attended — the escape hatch** | The headed browser is handed to a human physically at the server, who finishes by hand. Reached by **Fix in browser** on the gate screen, or automatically on a tier-3 halt | CAPTCHAs, identity checks, and anything the phone can't resolve |
+
+Assisted is the default because the alternative quietly makes a desktop presence a product requirement, and it isn't one. Attended exists because some halts genuinely cannot be resolved through a screenshot — and when the user isn't at the machine, those applications simply wait as `needs_attention` or fall back to a manual draft. **Waiting is an acceptable outcome; requiring the user at a desk is not.**
 
 The sidecar will not click a submit control unless it holds a confirmation token minted by the Dart server against a specific `applicationId`, valid for 10 minutes, single use. There is no code path from "form is filled" to "form is submitted" that does not pass through a human. `approved_by` stays `'human'` ([03](03-data-model.md)).
 
@@ -200,7 +204,8 @@ Nothing in this table auto-retries a submit. Retries are for fills, navigations,
 ## Open questions
 
 - Is the sidecar Node + Playwright, or Python + Playwright shared with the LangGraph sidecar in [13](13-practice-tracks.md)? One runtime is less to install; Node is the better-supported Playwright target.
-- Attended mode assumes the user is at the machine running the server, but the product is phone-first. Is assisted mode actually the default in practice, with attended reserved for new sites?
+- ~~Is assisted mode actually the default, with attended reserved for new sites?~~ **Resolved:** assisted is the default for everything. The UX is the phone app; attended is a fallback for halts a screenshot can't resolve, and an application that has to wait for the user to reach the server is an acceptable cost.
+- Does the phone need a live view of a run in progress (streamed screenshots), or is the final gate screenshot enough? Live is reassuring and is a lot of SSE plumbing for something the user watches once.
 - Should recipes live in the repo (shareable, reviewable, but they encode third-party selectors) or under `~/.dreamjob/` (private, but every user rediscovers Workday alone)?
 - Workday creates a candidate account per employer tenant, which means dozens of accounts ([15](15-accounts-identity.md)). Is Workday worth supporting at all before that flow is boringly reliable?
 - Does a failed read-back verification deserve one automatic re-fill attempt, or is any mismatch immediately human business?

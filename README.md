@@ -7,6 +7,8 @@ Swipe through every job that actually matches you, and let an AI agent tailor yo
 > Full specs — data model, matching, apply pipeline, compliance — are in [`docs/`](docs/).
 >
 > **Stack:** Dart end to end — a Flutter app on your phone, a `shelf` backend on your machine, shared models between them.
+>
+> **The phone is the whole UX.** Aggregation, matching, tailoring, the browser agent, the vault and the mailbox all run on the server with no interface of their own. Every decision they need from you shows up in the app — nothing requires you to be sat at the machine.
 
 ## The problem
 
@@ -78,11 +80,11 @@ Each one finds your resume on its own — a path, a `*resume*` / `*cv*` file in 
 
 Only a minority of jobs can be applied to over an API. The rest — Workday, iCIMS, every hand-rolled company career page — have a web form and nothing else. Restricting the tool to API-submittable postings throws away most of the deck, so there's a second path ([docs/14](docs/14-browser-agent.md)):
 
-- **A real browser, driven by a sidecar**, filling the employer's own form as you, with your own sessions. Headed, so you can watch.
+- **A real browser, driven by a sidecar**, filling the employer's own form as you, with your own sessions. It runs on the server with no UI of its own — you see it as screenshots in the phone app.
 - **Deterministic first.** Checked-in recipes per ATS platform supply the selectors. The model is a fallback for unknown fields — and even then it only picks *which stored answer* goes where. It never composes a value.
 - **An `AnswerBook`.** Notice period, work authorization, salary expectation, "how did you hear about us" — you answer each once, ever. EEO questions default to *decline to self-identify* and no model may ever touch them.
 - **You press submit.** Every time. The sidecar refuses a submit action without a single-use token minted by a human, and it verifies the outcome against both a confirmation page and a confirmation email before it will claim the application was sent.
-- **Accounts and codes handled.** Workday makes an account per employer; passwords are generated, stored in your OS keychain, and never shown to the model. Emailed verification codes are extracted by regex from a scoped mailbox read; SMS codes are pushed to your phone for *you* to read ([docs/15](docs/15-accounts-identity.md), [docs/16](docs/16-mailbox.md)).
+- **Accounts and codes handled.** Workday makes an account per employer; passwords are generated, stored in your OS keychain, and never shown to the model. Emailed verification codes are extracted by regex from a scoped mailbox read; SMS codes surface as a prompt in the app for *you* to read off your own phone ([docs/15](docs/15-accounts-identity.md), [docs/16](docs/16-mailbox.md)).
 
 What this explicitly is not: CAPTCHA solving, fingerprint spoofing, proxy rotation, or unattended sending. A site that blocks automation has succeeded, and that application becomes a link you open yourself.
 
