@@ -44,17 +44,17 @@ The critique→rewrite loop is where the interesting engineering is: a bounded r
 
 ### Where it plugs in
 
-**The seam already exists.** [07](07-apply-pipeline.md) specs the tailoring agent as a subprocess or an HTTP call — the Dart backend doesn't care what's on the other end. So the LangGraph service is a **sidecar**: a small Python HTTP service on localhost, and the Dart pipeline POSTs to it instead of spawning `claude -p`.
+**The seam already exists.** [07](07-apply-pipeline.md) specs the tailoring agent as a subprocess or an HTTP call — the Go backend doesn't care what's on the other end. So the LangGraph service is a **sidecar**: a small Python HTTP service on localhost, and the Dart pipeline POSTs to it instead of spawning `claude -p`.
 
 ```
-dreamjob_server (Dart) ──HTTP──► tailor-service (Python, FastAPI + LangGraph)
+dreamjob-server (Go) ──HTTP──► tailor-service (Python, FastAPI + LangGraph)
                                           │
                                           ├──► Claude (Messages API)
                                           ├──► DeepSeek-R1 (hosted, or a distill locally)
                                           └──► Qwen (locally via Ollama)
 ```
 
-**The cost, stated plainly:** this is a third language in a two-language project. It's worth it because LangGraph is Python-only and it's the tool you actually want on your resume — but keep the seam narrow (one endpoint, JSON in, JSON out) so the Dart side never learns anything about Python.
+**The cost, stated plainly:** this is a fifth language in an already four-language project ([02](02-architecture.md)). It's worth it because LangGraph is Python-only and it's the tool you actually want on your resume — but keep the seam narrow (one endpoint, JSON in, JSON out) so the Dart side never learns anything about Python.
 
 Keep the `claude -p` path working. Two backends behind one interface is what makes the comparison in the next section possible.
 
@@ -137,7 +137,7 @@ The project gives you realistic queries on unrealistically small data. Both halv
 
 **Real in dreamJob:** the deck query (filter + rank + paginate), dedup lookups by fingerprint, the tracker's aggregate views (reply rate by company, applications per week), migrations as the schema moves, and — the interesting one — **whether the deck is computed on read or on write**, which is a question with a real tradeoff and no obvious answer.
 
-Do these in raw SQL first, then port to drift. Writing it through an ORM first means you learn the ORM, not SQL.
+Raw SQL is the only option here anyway: `sqlc` generates Go from SQL you write, rather than generating SQL from Go. That is the right way round for learning it.
 
 **The separate drilling**, since your tables will hold hundreds of rows and interviewers ask about millions: joins (all four kinds, and when each is wrong), `GROUP BY` with `HAVING`, window functions (`ROW_NUMBER`, `RANK`, `LAG` — these come up constantly and are the most common gap), CTEs including recursive, and reading a query plan. `EXPLAIN QUERY PLAN` on your own deck query is the best first exercise you have, because you'll care about the answer.
 

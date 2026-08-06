@@ -1,22 +1,35 @@
 # 03 — Data model
 
-**Status: specified.** Types are Dart. They live in the `dreamjob_shared` package and are compiled into both the server and the Flutter app, so the API contract cannot silently drift.
+**Status: specified.** Types are shown in **Rust**, because `dreamjob-core` is where the domain rules live and Rust's type system is the only one of the three that can enforce them ([02](02-architecture.md)).
 
-Classes are written plainly below; the real definitions use `freezed` + `json_serializable` for immutability, `copyWith`, equality, and JSON codecs.
+They are a *reference projection*, not the source of truth. The wire contract is the OpenAPI document and JSON Schemas in `contract/` ([18](18-api-contract.md)); the Rust structs here, the Go structs in `dreamjob-server`, and the Dart classes in the app are all generated from it. **Hand-transcribing any of them is a defect.**
+
+Derives are elided below; the real definitions carry `#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]` and `#[serde(rename_all = "snake_case")]`.
+
+### Why Rust holds the reference shape
+
+Two rules in this doc are load-bearing and neither survives a careless port:
+
+1. **`Unknown` is a value, not an absence.** Rust makes it a variant that every `match` must handle. Go will happily let a `switch` fall through it.
+2. **`None` means "the posting did not say" and MUST NOT become `false`.** `Option<bool>` says this; Go's `bool` zero value says the opposite by default. Every tri-state field crosses into Go as `*bool` or an explicit option type, and a plain `bool` on one of these fields is a review-blocking bug.
+
+Go and Dart projections are mechanically derived, but those two properties are the ones to check by hand.
 
 Entities: `JobPosting`, `Profile`, `Match`, `SwipeEvent`, `Application`, plus the account/browser/mailbox/artifact types added by [14](14-browser-agent.md)–[17](17-resume-artifacts.md).
 
 ## Shared enums
 
-```dart
-enum SourceId { greenhouse, lever, ashby, workable, careersPage }
+```rust
+pub enum SourceId { Greenhouse, Lever, Ashby, Workable, CareersPage }
 
-enum WorkMode { remote, hybrid, onsite, unknown }
+pub enum WorkMode { Remote, Hybrid, Onsite, Unknown }
 
-enum Seniority { intern, junior, mid, senior, staff, principal, unknown }
+pub enum Seniority { Intern, Junior, Mid, Senior, Staff, Principal, Unknown }
 
-enum EmploymentType { fullTime, partTime, contract, internship, unknown }
+pub enum EmploymentType { FullTime, PartTime, Contract, Internship, Unknown }
 ```
+
+These are `#[non_exhaustive]`-adjacent in spirit but deliberately are not: adding a variant SHOULD break every `match` in the core, because a new work mode that silently falls into a catch-all arm is exactly the failure this design is avoiding.
 
 `unknown` is a first-class value everywhere. Postings routinely omit work mode and seniority, and a matcher that guesses silently is a matcher that lies. Unknowns are scored explicitly ([05](05-matching.md)), never coerced to a default.
 
@@ -24,93 +37,96 @@ enum EmploymentType { fullTime, partTime, contract, internship, unknown }
 
 One row per real-world job, not per source listing. Cross-posts collapse into `sources`.
 
-```dart
-class JobPosting {
-  final String id;                  // ULID, ours, stable across re-ingests
-  final String fingerprint;         // dedup key — see 04
-  final List<PostingSource> sources; // >=1; the same role seen on several boards
+```rust
+pub struct JobPosting {
+    pub id: Ulid,                        // ours, stable across re-ingests
+    pub fingerprint: String,             // dedup key — see 04
+    pub sources: Vec<PostingSource>,     // invariant: never empty; see rules
 
-  final String title;
-  final String titleNormalized;     // lowercased, seniority and noise stripped
-  final Company company;
+    pub title: String,
+    pub title_normalized: String,        // lowercased, seniority and noise stripped
+    pub company: Company,
 
-  final WorkMode workMode;
-  final List<Location> locations;   // as posted; may be several
-  final RemoteScope? remoteScope;
+    pub work_mode: WorkMode,
+    pub locations: Vec<Location>,        // as posted; may be several
+    pub remote_scope: Option<RemoteScope>,
 
-  final Seniority seniority;
-  final EmploymentType employmentType;
-  final Compensation? comp;
-  final List<String> stack;         // normalized tags: 'go', 'kubernetes', 'postgres'
+    pub seniority: Seniority,
+    pub employment_type: EmploymentType,
+    pub comp: Option<Compensation>,
+    pub stack: Vec<String>,              // normalized tags: "go", "kubernetes"
 
-  final String descriptionText;     // plain text — what the matcher and agent read
-  final String? descriptionHtml;    // preserved for the UI
-  final List<String> requirements;  // extracted bullets, source wording kept
-  final Dealbreakers dealbreakers;
+    pub description_text: String,        // what the matcher and the agent read
+    pub description_html: Option<String>,// preserved for the UI
+    pub requirements: Vec<String>,       // extracted bullets, source wording kept
+    pub dealbreakers: Dealbreakers,
 
-  final DateTime? postedAt;         // as claimed by the source
-  final DateTime firstSeenAt;
-  final DateTime lastSeenAt;
-  final DateTime? closedAt;         // set when it disappears from its board
+    pub posted_at: Option<DateTime<Utc>>,// as claimed by the source
+    pub first_seen_at: DateTime<Utc>,
+    pub last_seen_at: DateTime<Utc>,
+    pub closed_at: Option<DateTime<Utc>>,// set when it disappears from its board
 
-  final int normalizerVersion;
+    pub normalizer_version: u32,
 }
 
-class PostingSource {
-  final SourceId source;
-  final String sourceJobId;
-  final String board;               // greenhouse token, lever slug, hostname…
-  final String url;                 // canonical posting page
-  final String applyUrl;
-  final Map<String, dynamic> raw;   // untouched source payload — never rewritten
-  final DateTime fetchedAt;
+pub struct PostingSource {
+    pub source: SourceId,
+    pub source_job_id: String,
+    pub board: String,                   // greenhouse token, lever slug, hostname…
+    pub url: String,                     // canonical posting page
+    pub apply_url: String,
+    pub raw: serde_json::Value,          // untouched source payload — never rewritten
+    pub fetched_at: DateTime<Utc>,
 }
 
-class Company {
-  final String name;
-  final String nameNormalized;
-  final String? domain;
-  final String? logoUrl;
+pub struct Company {
+    pub name: String,
+    pub name_normalized: String,
+    pub domain: Option<String>,
+    pub logo_url: Option<String>,
 }
 
-class Location {
-  final String raw;                 // exactly as posted: "Remote - EMEA", "NYC (Hybrid)"
-  final String? city;
-  final String? region;
-  final String? country;            // ISO 3166-1 alpha-2
-  final String? timezone;           // IANA
+pub struct Location {
+    pub raw: String,                     // as posted: "Remote - EMEA", "NYC (Hybrid)"
+    pub city: Option<String>,
+    pub region: Option<String>,
+    pub country: Option<CountryCode>,    // ISO 3166-1 alpha-2
+    pub timezone: Option<String>,        // IANA
 }
 
-class RemoteScope {
-  final bool anywhere;
-  final List<String> countries;     // ISO 3166-1 alpha-2
-  final (int, int)? timezoneRange;  // UTC offsets, inclusive
+pub struct RemoteScope {
+    pub anywhere: bool,
+    pub countries: Vec<CountryCode>,
+    pub timezone_range: Option<(i8, i8)>, // UTC offsets, inclusive
 }
 
-enum CompPeriod { year, month, hour }
-enum CompSource { posted, rangeInText, absent }
+pub enum CompPeriod { Year, Month, Hour }
+pub enum CompSource { Posted, RangeInText, Absent }
 
-class Compensation {
-  final num? min;
-  final num? max;
-  final String currency;            // ISO 4217
-  final CompPeriod period;
-  final bool equityMentioned;
-  final CompSource source;
+pub struct Compensation {
+    pub min: Option<Decimal>,
+    pub max: Option<Decimal>,
+    pub currency: CurrencyCode,          // ISO 4217
+    pub period: CompPeriod,
+    pub equity_mentioned: bool,
+    pub source: CompSource,
 }
 
-/// `null` means the posting did not say. Never coerce that to `false`.
-class Dealbreakers {
-  final bool? visaSponsorship;
-  final bool? securityClearance;
-  final bool? onCall;
-  final int? minYearsExperience;
-  final List<String>? citizenshipRequired;
+/// `None` means the posting did not say. Never coerce that to `false`.
+pub struct Dealbreakers {
+    pub visa_sponsorship: Option<bool>,
+    pub security_clearance: Option<bool>,
+    pub on_call: Option<bool>,
+    pub min_years_experience: Option<u8>,
+    pub citizenship_required: Option<Vec<CountryCode>>,
 }
 ```
 
+`Decimal` rather than `f64` for money, and `CountryCode`/`CurrencyCode` as newtypes rather than `String`: comp comparison against a floor is a correctness path, and a currency mismatch that type-checks is a silent wrong answer.
+
 **Rules**
 
+- `sources` MUST be non-empty. Rust cannot express that in `Vec`, so it is a constructor invariant with a test, and the JSON Schema carries `minItems: 1` so the contract enforces it for Go and Dart too.
 - `raw` MUST be stored verbatim per source. Re-normalizing without re-fetching depends on it.
 - `descriptionText` MUST be the text the matcher and the agent both read. Two different extractions of the same posting is a class of bug worth designing out.
 - `CompSource` distinguishes a posted range from one scraped out of prose. Never present an inferred range as posted.
@@ -120,54 +136,56 @@ class Dealbreakers {
 
 The single file that drives matching. Human-editable — a document the user owns, not app state. Stored as `profile.yaml` on the server and loaded into this shape; the app edits it through the API.
 
-```dart
-class Profile {
-  final int version;                // bumped on every edit; Match rows reference it
+```rust
+pub struct Profile {
+    pub version: u32,                    // bumped on every edit; Match rows reference it
 
-  final List<String> roles;         // 'backend', 'platform', 'sre', 'data'
-  final List<Seniority> seniority;  // acceptable band
+    pub roles: Vec<String>,              // "backend", "platform", "sre", "data"
+    pub seniority: Vec<Seniority>,       // acceptable band
 
-  final List<WorkMode> workModes;
-  final int? maxCommuteMinutes;     // hybrid/onsite only
-  final Location? baseLocation;
-  final RemotePreference remote;
+    pub work_modes: Vec<WorkMode>,
+    pub max_commute_minutes: Option<u16>,// hybrid/onsite only
+    pub base_location: Option<Location>,
+    pub remote: RemotePreference,
 
-  final CompFloor? compFloor;
-  final bool compFloorAppliesToUnposted;
+    pub comp_floor: Option<CompFloor>,
+    pub comp_floor_applies_to_unposted: bool,
 
-  final StackPreference stack;
-  final ProfileDealbreakers dealbreakers;
+    pub stack: StackPreference,
+    pub dealbreakers: ProfileDealbreakers,
 
-  final String resumePath;          // master resume, the tailoring baseline
-  final MatchWeights? weights;      // optional override of the defaults in 05
+    pub resume_path: PathBuf,            // master resume, the tailoring baseline
+    pub weights: Option<MatchWeights>,   // override of the defaults in 05
 }
 
-class RemotePreference {
-  final List<String> countries;
-  final (int, int)? timezoneRange;
+pub struct RemotePreference {
+    pub countries: Vec<CountryCode>,
+    pub timezone_range: Option<(i8, i8)>,
 }
 
-class CompFloor {
-  final num amount;
-  final String currency;
-  final CompPeriod period;
+pub struct CompFloor {
+    pub amount: Decimal,
+    pub currency: CurrencyCode,
+    pub period: CompPeriod,
 }
 
-class StackPreference {
-  final List<String> want;          // scored positively
-  final List<String> ok;            // neutral
-  final List<String> refuse;        // hard filter
+pub struct StackPreference {
+    pub want: Vec<String>,               // scored positively
+    pub ok: Vec<String>,                 // neutral
+    pub refuse: Vec<String>,             // hard filter
 }
 
-class ProfileDealbreakers {
-  final bool needsVisaSponsorship;
-  final bool noOnCall;
-  final bool noClearance;
-  final List<String> companyBlocklist; // normalized company names
-  final int? minCompanySize;
-  final int? maxCompanySize;
+pub struct ProfileDealbreakers {
+    pub needs_visa_sponsorship: bool,
+    pub no_on_call: bool,
+    pub no_clearance: bool,
+    pub company_blocklist: Vec<String>,  // normalized company names
+    pub min_company_size: Option<u32>,
+    pub max_company_size: Option<u32>,
 }
 ```
+
+Note the asymmetry with `Dealbreakers`: the *posting's* flags are `Option<bool>` because a posting may be silent, while the *profile's* are plain `bool` because the user always has a position, even if it is "don't care" expressed as `false`. Getting this backwards in either direction is a filter bug.
 
 A profile edit bumps `version`, which invalidates existing `Match` rows rather than mutating them.
 
@@ -175,31 +193,33 @@ A profile edit bumps `version`, which invalidates existing `Match` rows rather t
 
 The matcher's verdict on one posting under one profile version.
 
-```dart
-class Match {
-  final String postingId;
-  final int profileVersion;
-  final int matcherVersion;
+```rust
+pub struct Match {
+    pub posting_id: Ulid,
+    pub profile_version: u32,
+    pub matcher_version: u32,
 
-  final double score;               // 0–100
-  final bool passedFilters;         // false => hard-filtered, never shown
-  final List<String> filterFailures; // e.g. ['workMode', 'compFloor']
+    pub score: f64,                      // 0–100
+    pub passed_filters: bool,            // false => hard-filtered, never shown
+    pub filter_failures: Vec<FilterId>,  // e.g. [WorkMode, CompFloor]
 
-  final MatchComponents components;
-  final List<String> reasons;       // human-readable, shown on the card
-  final DateTime computedAt;
+    pub components: MatchComponents,
+    pub reasons: Vec<String>,            // human-readable, shown on the card
+    pub computed_at: DateTime<Utc>,      // passed in; the core has no clock
 }
 
-class MatchComponents {
-  final double roleFit;
-  final double stackFit;
-  final double seniorityFit;
-  final double locationFit;
-  final double compFit;
-  final double companyFit;
-  final double learned;             // from swipe history; 0 until M7
+pub struct MatchComponents {
+    pub role_fit: f64,
+    pub stack_fit: f64,
+    pub seniority_fit: f64,
+    pub location_fit: f64,
+    pub comp_fit: f64,
+    pub company_fit: f64,
+    pub learned: f64,                    // from swipe history; 0 until M7
 }
 ```
+
+`filter_failures` is an enum, not a string: it is rendered in the UI and queried in analytics, and a typo'd `"compfloor"` should not compile.
 
 `reasons` is a product feature, not a debug field. A card that can't say why it's in the deck erodes trust in the deck.
 
@@ -207,20 +227,20 @@ class MatchComponents {
 
 Append-only. Training data for M7 and the audit trail for "why did I apply here".
 
-```dart
-enum SwipeDirection { right, left, save }
+```rust
+pub enum SwipeDirection { Right, Left, Save }
 
-class SwipeEvent {
-  final String id;                  // client-generated, so offline replay is idempotent
-  final String postingId;
-  final SwipeDirection direction;
-  final DateTime at;
-  final int dwellMs;                // card shown → swiped; a proxy for deliberation
-  final int cardVersion;            // which card layout they saw
-  final double matchScore;          // score at swipe time, denormalized on purpose
-  final int profileVersion;
-  final String? reason;             // optional: "too junior", "bad stack"
-  final String? compensates;        // id of the event this undoes
+pub struct SwipeEvent {
+    pub id: Uuid,                        // client-generated; offline replay is idempotent
+    pub posting_id: Ulid,
+    pub direction: SwipeDirection,
+    pub at: DateTime<Utc>,
+    pub dwell_ms: u32,                   // card shown → swiped; a deliberation proxy
+    pub card_version: u32,               // which card layout they saw
+    pub match_score: f64,                // score at swipe time, denormalized on purpose
+    pub profile_version: u32,
+    pub reason: Option<String>,          // optional: "too junior", "bad stack"
+    pub compensates: Option<Uuid>,       // id of the event this undoes
 }
 ```
 
@@ -230,77 +250,83 @@ Undo appends an event with `compensates` set. Nothing is deleted; the deck's cur
 
 One per right-swipe that entered the pipeline.
 
-```dart
-enum ApplicationStatus {
-  queued,
-  tailoring,
-  awaitingReview,
-  approved,
-  submitting,
-  awaitingVerification,   // parked on an email/SMS challenge — see 15, 16
-  submitted,
-  submitUnverified,       // form was sent, neither confirmation signal landed — see 14
-  awaitingManualSubmit,
-  submitFailed,
-  needsAttention,
-  abandoned,
-  responded,
-  rejected,
-  interviewing,
-  closed,
+```rust
+pub enum ApplicationStatus {
+    Queued,
+    Tailoring,
+    AwaitingReview,
+    Approved,
+    Submitting,
+    AwaitingVerification,  // parked on an email/SMS challenge — see 15, 16
+    Submitted,
+    SubmitUnverified,      // form sent, neither confirmation signal landed — see 14
+    AwaitingManualSubmit,
+    SubmitFailed,
+    NeedsAttention,
+    Abandoned,
+    Responded,
+    Rejected,
+    Interviewing,
+    Closed,
 }
 
-class Application {
-  final String id;
-  final String postingId;
-  final String swipeEventId;
-  final ApplicationStatus status;
+pub struct Application {
+    pub id: Ulid,
+    pub posting_id: Ulid,
+    pub swipe_event_id: Uuid,
+    pub status: ApplicationStatus,
 
-  final String workspacePath;       // applications/<id>/
-  final ApplicationArtifacts artifacts;
+    pub workspace_path: PathBuf,         // applications/<id>/
+    pub artifacts: ApplicationArtifacts,
 
-  final List<AgentRun> agentRuns;
-  final DateTime? approvedAt;
-  final String approvedBy;          // literal 'human'; no other legal value through M6
-  final DateTime? submittedAt;
-  final SubmitMethod? submitMethod;
+    pub agent_runs: Vec<AgentRun>,
+    pub approved_at: Option<DateTime<Utc>>,
+    pub approved_by: ApprovedBy,         // one variant only, through M6
+    pub submitted_at: Option<DateTime<Utc>>,
+    pub submit_method: Option<SubmitMethod>,
 
-  final Outcome? outcome;
-  final DateTime? followUpAt;
+    pub outcome: Option<Outcome>,
+    pub follow_up_at: Option<DateTime<Utc>>,
 }
 
-class ApplicationArtifacts {
-  final String? keywordsMd;         // resume-recruiter output for this posting
-  final String? bulletsMd;          // resume-rewriter output
-  final String? resumePdf;          // rendered — the file actually sent
-  final String? resumeSha256;       // hash of that file, re-verified at upload — see 17
-  final String? resumeDocx;         // only when the form demands it
-  final String? coverLetterMd;
-  final String? submissionReceipt;
-  final String? browserRunId;       // set when submitMethod == browser
+/// Deliberately an enum with one variant rather than a String. Adding a second
+/// is a design decision that has to be written down, not a value someone passes.
+pub enum ApprovedBy { Human }
+
+pub struct ApplicationArtifacts {
+    pub keywords_md: Option<PathBuf>,    // resume-recruiter output for this posting
+    pub bullets_md: Option<PathBuf>,     // resume-rewriter output
+    pub resume_pdf: Option<PathBuf>,     // rendered — the file actually sent
+    pub resume_sha256: Option<Sha256>,   // re-verified at upload — see 17
+    pub resume_docx: Option<PathBuf>,    // only when the form demands it
+    pub cover_letter_md: Option<PathBuf>,
+    pub submission_receipt: Option<PathBuf>,
+    pub browser_run_id: Option<Ulid>,    // set when submit_method == Browser
 }
 
-enum SubmitMethod { api, browser, manual }
+pub enum SubmitMethod { Api, Browser, Manual }
 
-enum OutcomeKind { noResponse, rejected, screen, interview, offer }
+pub enum OutcomeKind { NoResponse, Rejected, Screen, Interview, Offer }
 
-class Outcome {
-  final DateTime? firstResponseAt;
-  final OutcomeKind kind;
-  final String? notes;
+pub struct Outcome {
+    pub first_response_at: Option<DateTime<Utc>>,
+    pub kind: OutcomeKind,
+    pub notes: Option<String>,
 }
 
-enum AgentStage { recruiter, rewriter, coverLetter, formMapping }
+pub enum AgentStage { Recruiter, Rewriter, CoverLetter, FormMapping }
 
-class AgentRun {
-  final AgentStage stage;
-  final DateTime startedAt;
-  final DateTime? endedAt;
-  final bool ok;
-  final String? error;
-  final String? transcriptPath;
+pub struct AgentRun {
+    pub stage: AgentStage,
+    pub started_at: DateTime<Utc>,
+    pub ended_at: Option<DateTime<Utc>>,
+    pub ok: bool,
+    pub error: Option<String>,
+    pub transcript_path: Option<PathBuf>,
 }
 ```
+
+**The status machine is the best type-system exercise in the project.** [12](12-build-guide.md) asks whether an illegal transition can be made to fail at compile time. In Rust the honest answer is a typestate (`Application<Queued>` → `Application<Tailoring>`) which is elegant and fights the database, or a single `fn transition(self, ev: Event) -> Result<Self, IllegalTransition>` with an exhaustive `match` — one function, one table, one place to test. Prefer the second and know why you rejected the first.
 
 **Rules**
 
@@ -312,33 +338,37 @@ class AgentRun {
 
 Accounts dreamJob holds at employer systems ([15](15-accounts-identity.md)). The secret is not in this model — that is the point of it.
 
-```dart
-enum SiteAccountKind { atsTenant, atsGlobal, careerPage }
-enum EmailStrategy { plusTag, plain, catchAll }
+```rust
+pub enum SiteAccountKind { AtsTenant, AtsGlobal, CareerPage }
+pub enum EmailStrategy { PlusTag, Plain, CatchAll }
 
-class SiteAccount {
-  final String id;
-  final String domain;              // apply domain, e.g. acme.wd1.myworkdayjobs.com
-  final SiteAccountKind kind;
-  final String platform;            // 'workday', 'greenhouse', 'icims', 'custom'
+pub struct SiteAccount {
+    pub id: Ulid,
+    pub domain: String,                  // e.g. acme.wd1.myworkdayjobs.com
+    pub kind: SiteAccountKind,
+    pub platform: String,                // "workday", "greenhouse", "icims", "custom"
 
-  final String email;               // the alias used to register
-  final EmailStrategy emailStrategy;
-  final String credentialRefId;     // keychain handle — never a secret
-  final String browserProfilePath;  // persistent user-data-dir
+    pub email: String,                   // the alias used to register
+    pub email_strategy: EmailStrategy,
+    pub credential_ref_id: CredentialRefId, // keychain handle — never a secret
+    pub browser_profile_path: PathBuf,   // persistent user-data-dir
 
-  final DateTime createdAt;
-  final DateTime? lastLoginAt;
-  final bool phoneVerified;
-  final int applicationCount;
+    pub created_at: DateTime<Utc>,
+    pub last_login_at: Option<DateTime<Utc>>,
+    pub phone_verified: bool,
+    pub application_count: u32,
 }
 
-class CredentialRef {
-  final String id;
-  final String service;             // always 'dreamjob'
-  final String username;
-  final DateTime createdAt;
-  final DateTime? rotatedAt;
+/// A newtype, so a keychain handle can never be passed where a password is
+/// expected — and so `impl Debug` can be written by hand to print `<ref>`.
+pub struct CredentialRefId(String);
+
+pub struct CredentialRef {
+    pub id: CredentialRefId,
+    pub service: &'static str,           // always "dreamjob"
+    pub username: String,
+    pub created_at: DateTime<Utc>,
+    pub rotated_at: Option<DateTime<Utc>>,
 }
 ```
 
@@ -352,39 +382,39 @@ class CredentialRef {
 
 One per browser-driven submission or registration attempt ([14](14-browser-agent.md)).
 
-```dart
-enum BrowserRunKind { register, login, dryRun, submit }
-enum BrowserRunOutcome { succeeded, halted, failed, blocked }
-enum FillTier { recipe, semanticMap, human }
+```rust
+pub enum BrowserRunKind { Register, Login, DryRun, Submit }
+pub enum BrowserRunOutcome { Succeeded, Halted, Failed, Blocked }
+pub enum FillTier { Recipe, SemanticMap, Human }
 
-class BrowserRun {
-  final String id;
-  final String? applicationId;      // null for a bare register/login run
-  final String siteAccountId;
-  final BrowserRunKind kind;
+pub struct BrowserRun {
+    pub id: Ulid,
+    pub application_id: Option<Ulid>,    // None for a bare register/login run
+    pub site_account_id: Ulid,
+    pub kind: BrowserRunKind,
 
-  final String recipeId;
-  final int recipeVersion;
-  final FillTier highestTierUsed;   // recipe-only runs are the trustworthy ones
+    pub recipe_id: String,
+    pub recipe_version: u32,
+    pub highest_tier_used: FillTier,     // recipe-only runs are the trustworthy ones
 
-  final List<FilledField> fields;
-  final BrowserRunOutcome outcome;
-  final String? haltReason;         // quoted question, CAPTCHA, mismatch…
-  final String tracePath;           // trace.zip + screenshots
-  final String? confirmationPath;
+    pub fields: Vec<FilledField>,
+    pub outcome: BrowserRunOutcome,
+    pub halt_reason: Option<String>,     // quoted question, CAPTCHA, mismatch…
+    pub trace_path: PathBuf,             // trace.zip + screenshots
+    pub confirmation_path: Option<PathBuf>,
 
-  final DateTime startedAt;
-  final DateTime? endedAt;
-  final String? confirmedBy;        // 'human' — the submit gate token holder
+    pub started_at: DateTime<Utc>,
+    pub ended_at: Option<DateTime<Utc>>,
+    pub confirmed_by: Option<ApprovedBy>,// the submit-gate token holder
 }
 
-class FilledField {
-  final String selectorOrRef;
-  final String? answerKey;          // AnswerBook key; null for uploads
-  final String renderedValueHash;   // never the value for anything sensitive
-  final String readBackValue;       // what the DOM held afterwards
-  final bool verified;              // rendered == readBack
-  final FillTier tier;
+pub struct FilledField {
+    pub selector_or_ref: String,
+    pub answer_key: Option<AnswerKey>,   // None for uploads
+    pub rendered_value_hash: Sha256,     // never the value, for anything sensitive
+    pub read_back_value: String,         // what the DOM held afterwards
+    pub verified: bool,                  // rendered == read_back
+    pub tier: FillTier,
 }
 ```
 
@@ -396,18 +426,18 @@ class FilledField {
 
 ## VerificationChallenge
 
-```dart
-enum ChallengeKind { emailCode, emailLink, sms }
-enum ChallengeOutcome { resolved, expired, refused, cancelled }
+```rust
+pub enum ChallengeKind { EmailCode, EmailLink, Sms }
+pub enum ChallengeOutcome { Resolved, Expired, Refused, Cancelled }
 
-class VerificationChallenge {
-  final String id;
-  final String browserRunId;
-  final String domain;              // who asked — shown to the user before they answer
-  final ChallengeKind kind;
-  final DateTime openedAt;
-  final DateTime expiresAt;         // openedAt + 5 min
-  final ChallengeOutcome? outcome;
+pub struct VerificationChallenge {
+    pub id: Ulid,
+    pub browser_run_id: Ulid,
+    pub domain: String,                  // who asked — shown before the user answers
+    pub kind: ChallengeKind,
+    pub opened_at: DateTime<Utc>,
+    pub expires_at: DateTime<Utc>,       // opened_at + 5 min
+    pub outcome: Option<ChallengeOutcome>,
 }
 ```
 
@@ -415,23 +445,23 @@ class VerificationChallenge {
 
 ## MailMessage
 
-```dart
-class MailMessage {
-  final String id;                  // provider message id
-  final String? applicationId;      // null until attributed
-  final AttributionConfidence confidence;
+```rust
+pub struct MailMessage {
+    pub id: String,                      // provider message id
+    pub application_id: Option<Ulid>,    // None until attributed
+    pub confidence: AttributionConfidence,
 
-  final String fromDomain;
-  final String? deliveredToAlias;   // the plus-tag, when present
-  final String subject;
-  final String bodyText;
-  final DateTime receivedAt;
+    pub from_domain: String,
+    pub delivered_to_alias: Option<String>, // the plus-tag, when present
+    pub subject: String,
+    pub body_text: String,
+    pub received_at: DateTime<Utc>,
 
-  final OutcomeKind? classified;
-  final bool classificationConfirmedByUser;
+    pub classified: Option<OutcomeKind>,
+    pub classification_confirmed_by_user: bool,
 }
 
-enum AttributionConfidence { exact, strong, weak }
+pub enum AttributionConfidence { Exact, Strong, Weak }
 ```
 
 **Rules**
@@ -444,17 +474,17 @@ enum AttributionConfidence { exact, strong, weak }
 
 Content-addressed renders ([17](17-resume-artifacts.md)).
 
-```dart
-class ResumeArtifact {
-  final String sha256;              // identity — the filename is sha256[:8]
-  final String pdfPath;
-  final String? docxPath;
-  final String jsonPath;            // the ResumeDoc that produced it
-  final String markdownPath;
-  final DateTime renderedAt;
-  final bool roundTripVerified;
-  final bool keywordsLanded;
-  final List<String> missingKeywords;
+```rust
+pub struct ResumeArtifact {
+    pub sha256: Sha256,                  // identity — the filename is sha256[..8]
+    pub pdf_path: PathBuf,
+    pub docx_path: Option<PathBuf>,
+    pub json_path: PathBuf,              // the ResumeDoc that produced it
+    pub markdown_path: PathBuf,
+    pub rendered_at: DateTime<Utc>,
+    pub round_trip_verified: bool,
+    pub keywords_landed: bool,
+    pub missing_keywords: Vec<String>,
 }
 ```
 
@@ -464,7 +494,9 @@ Immutable. A re-run produces a new hash; nothing is regenerated in place.
 
 ```
 ~/.dreamjob/
-  dreamjob.db                   # SQLite (drift)
+  config.yaml                   # server settings — bind address, intervals (19)
+  sources.yaml                  # which boards to poll (19)
+  dreamjob.db                   # SQLite
   profile.yaml                  # the Profile, user-owned
   answers.yaml                  # the AnswerBook — form answers, user-owned (14)
   accounts.yaml                 # SiteAccount mirror, human-readable (15)
@@ -500,4 +532,6 @@ Secrets are the one thing *not* in this tree: passwords and OAuth tokens live in
 - Does `save` (swipe up) deserve its own queue, or is it just a right-swipe the user hasn't committed to?
 - Should the phone cache `descriptionHtml` at all, or fetch full descriptions on demand? Caching it makes offline browsing real and roughly triples the cache size.
 - `BrowserRun.fields` duplicates what the Playwright trace already holds. Is the structured copy worth it, or should the review screen read the trace?
+- The Rust shapes here are the reference, but Go is what actually writes to SQLite. Does `sqlc` generate a third set of structs that then need mapping, or do the DB rows and the contract types stay deliberately identical?
+- Newtypes (`Sha256`, `CountryCode`, `CredentialRefId`) are free in Rust and awkward in Go, where the idiom is a bare `string`. Are they worth defining on the Go side anyway, or does the safety stop at the core boundary?
 - Should `MailMessage` bodies live in SQLite or on disk like the other artifacts? They are small and queryable, which argues for the DB; they are as sensitive as the resume, which argues for the tree.

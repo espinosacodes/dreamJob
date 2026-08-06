@@ -15,7 +15,7 @@ Four Claude Code skills sharing state through `resume-workspace/`.
 
 One source end to end.
 
-**Scope:** the three Dart packages (`dreamjob_shared`, `dreamjob_server`, `dreamjob_app` — the last one empty for now); the `SourceAdapter` interface; a Greenhouse adapter; the normalizer (steps 1–7 of [04](04-aggregation.md)); fingerprint + fuzzy dedup; the `drift` store with raw payload retention; the scheduler; quarantine.
+**Scope:** the workspace layout — `dreamjob-server` (Go), `dreamjob-core` (Rust), `dreamjob-app` (Flutter, empty for now), `contract/`; the `SourceAdapter` interface; a Greenhouse adapter; the normalizer in the core (steps 1–7 of [04](04-aggregation.md)); fingerprint + fuzzy dedup; the SQLite store with raw payload retention; the Go↔core subprocess boundary and its JSON Schema; the scheduler; quarantine.
 
 **Acceptance**
 - [ ] A configured list of Greenhouse boards ingests into `JobPosting` rows.
@@ -24,7 +24,10 @@ One source end to end.
 - [ ] `normalizer_version` bump re-normalizes from stored raw with no network calls.
 - [ ] A deliberately malformed payload lands in quarantine and the run completes.
 - [ ] Work mode, seniority, comp, and stack extraction hit ≥ 90% agreement with hand-labels on a 100-posting fixture set.
-- [ ] Rate limits enforced by the runner and observable in logs.
+- [ ] Rate limits enforced by the Go runner and observable in logs.
+- [ ] `dreamjob-core normalize` runs from a shell against a stored raw payload and produces the same `JobPosting` the server got — the core is testable without the server.
+- [ ] The core makes no network call and reads no clock; time is an input. Verified by a test that passes a fixed timestamp and asserts a byte-identical result on two runs a day apart.
+- [ ] Every tri-state field survives the round-trip through Go without a zero-value coercion, verified by a fixture where `visa_sponsorship` is absent and must stay absent.
 
 **Deliberately out:** every other source, any UI. Ingestion is inspectable via SQL at this stage, and that is enough.
 
@@ -51,7 +54,7 @@ One source end to end.
 - [ ] `DreamJobTokens` exists and no widget contains a raw colour, duration, or font size.
 - [ ] Card layout is covered by golden tests keyed to `card_version`; a layout change without a version bump fails CI.
 - [ ] The deck holds 120fps on the target machine while a card is being dragged.
-- [ ] The app uses `dreamjob_shared` models directly — no redeclared types.
+- [ ] The app's models are generated from `contract/openapi.yaml` — no hand-written type mirrors a contract type, in any of the three languages ([18](18-api-contract.md)).
 - [ ] Pairing works end to end: scan the server's QR code, token stored in `flutter_secure_storage`, subsequent launches reconnect without re-scanning.
 - [ ] The app runs on a **real Android device** on the same network, not just the emulator.
 - [ ] Every gesture has a working on-screen button equivalent.
@@ -72,7 +75,7 @@ One source end to end.
 
 **Acceptance**
 - [ ] A right-swipe produces a workspace with the posting frozen at swipe time.
-- [ ] Recruiter mode A and rewriter run non-interactively to completion, driven from Dart, with the existing `SKILL.md` files unmodified.
+- [ ] Recruiter mode A and rewriter run non-interactively to completion, driven from Go, with the existing `SKILL.md` files unmodified.
 - [ ] The Anthropic API key never leaves the server — verified by inspecting what the app receives.
 - [ ] A resume containing an unfilled placeholder cannot be approved — button disabled, reason shown.
 - [ ] Rendered PDFs round-trip through `pdftotext -layout` with no content loss.
@@ -166,7 +169,7 @@ All seven milestones are in scope. Worth saying once and then not repeating: M1�
 
 | Phase | Milestones | Why here |
 | --- | --- | --- |
-| Early | M1, M2 | Pure Dart, no UI, fully testable. Fastest path to something demonstrable via CLI output. |
+| Early | M1, M2 | Go plus a pure Rust core, no UI, fully testable. Fastest path to something demonstrable via CLI output — and the two milestones where the language split pays for itself. |
 | Middle | M3, M4 | The two that carry the demo. M4 can be built against a hand-written posting file in parallel with M3 — do that; it's the highest-risk piece. |
 | Late | M5a, M5b, M6 | M5b needs a real posting to submit to; M6 needs applications that have aged. Start M6's schema early even if the data is thin. |
 | Last | M7 | Needs M6's outcome data to be honest. If the term runs out, ship it trained on swipe history alone and **say so** — an honest limitation documented is worth more than a learning loop that optimizes for the wrong signal. |

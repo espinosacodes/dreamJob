@@ -113,7 +113,7 @@ The Flutter app runs on a phone, so the backend cannot hide behind `127.0.0.1`. 
 3. **Pairing is out-of-band.** The server prints a QR code containing host, port, and token; the app scans it once and stores the token in `flutter_secure_storage` (Keychain / Keystore). The token is never typed, mailed, or committed.
 4. **Rotation is one command**, and rotating invalidates every paired device.
 5. **TLS with a self-signed cert, pinned by the app at pairing time.** Plain HTTP carries a resume and a bearer token across a network the user may not control; on a café Wi‑Fi that is a live credential-and-PII leak. If TLS is genuinely too much for a first cut, the app MUST refuse to connect over anything but a private-range address and say why.
-6. **No hosted deployment without revisiting this section.** Putting the server on a VPS moves the resume off the user's machine and changes the whole privacy story below. That is a decision, not a deployment detail.
+6. **No hosted deployment without revisiting this section.** Putting the server on a VPS moves the resume off the user's machine and changes the whole privacy story below. That is a decision, not a deployment detail. One revisit has been done — [the `air` box](server.md), user-owned hardware on a private overlay, permitted under five stated conditions. A VPS is still not, and the difference is who can read the disk.
 
 ### Rules
 

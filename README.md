@@ -6,7 +6,7 @@ Swipe through every job that actually matches you, and let an AI agent tailor yo
 >
 > Full specs — data model, matching, apply pipeline, compliance — are in [`docs/`](docs/).
 >
-> **Stack:** Dart end to end — a Flutter app on your phone, a `shelf` backend on your machine, shared models between them.
+> **Stack:** A Flutter app on your phone, a Go service on your machine, and a Rust core for the parts that have to be exactly right.
 >
 > **The phone is the whole UX.** Aggregation, matching, tailoring, the browser agent, the vault and the mailbox all run on the server with no interface of their own. Every decision they need from you shows up in the app — nothing requires you to be sat at the machine.
 
@@ -121,6 +121,8 @@ Build order follows that table: the ATS platforms with real APIs first, because 
 - **Respect the sources.** Rate-limit ingestion, honor `robots.txt`, and skip any platform whose terms forbid automated applications rather than working around them. A banned LinkedIn account costs more than the automation saves.
 - **Reading postings and applying to jobs get different rules.** Ingestion is unauthenticated, public-endpoints-only, at bot scale. Submission is authenticated as you, in your own accounts, twenty times a week, with you clicking. Conflating the two either kills the product or builds a scraper — [docs/09](docs/09-compliance.md) draws the line explicitly.
 - **The model never holds a secret.** Passwords live in the OS keychain and are resolved by the browser sidecar after the model's last turn. There is no prompt, tool result, or transcript in which one can appear.
+- **Go owns anything with a network or a clock in it; Rust owns anything that must be exactly right.** The matcher, the normalizer and the resume renderer are pure functions with no I/O, invoked as a subprocess — which is why they're the parts with the best test story. Everything concurrent, retried or scheduled is Go. Full reasoning in [docs/02](docs/02-architecture.md).
+- **The contract is a file, not a convention.** With three languages and no shared package, `contract/` (OpenAPI + JSON Schema) is the source of truth and every type on every boundary is generated from it. CI fails if regenerating produces a diff ([docs/18](docs/18-api-contract.md)).
 
 ## Contributing
 

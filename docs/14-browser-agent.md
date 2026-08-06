@@ -17,10 +17,10 @@ This is the section that keeps the rest of the doc honest, so it goes first.
 
 ## Engine and process shape
 
-**Playwright, driven by a sidecar over localhost.** Dart has no maintained Playwright binding and browser automation is the single worst fit for Dart's ecosystem ([02](02-architecture.md) already concedes this for scraping and PDF extraction). The pattern is the one [07](07-apply-pipeline.md) §2C already established for the LangGraph sidecar: a small local service, a JSON contract, and a Dart side that knows a URL and nothing else.
+**Playwright, driven by a sidecar over localhost.** Neither Go nor Rust has a Playwright binding worth betting the apply path on — Go's options are thin and Rust's `playwright-rust` is unmaintained, while `chromiumoxide` is a raw CDP client that would mean rebuilding auto-waiting, the selector engine and the trace viewer by hand. Those three are most of why this doc is tractable. The pattern is the one [07](07-apply-pipeline.md) §2C established for the LangGraph sidecar: a small local service, a JSON contract, and a caller that knows a URL and nothing else.
 
 ```
-dreamjob_server (Dart)
+dreamjob-server (Go)
    │  POST http://127.0.0.1:8765/run   { applicationId, plan }
    │  GET  /run/:id/events (SSE: progress, screenshots, challenges)
    ▼
@@ -33,7 +33,7 @@ employer ATS / career page
 Rules on the sidecar:
 
 - Binds `127.0.0.1` only. It holds live logged-in sessions to employer systems; it is never reachable from the LAN, unlike the JSON API ([09](09-compliance.md)).
-- Started and stopped by the Dart server as a child process. A crashed sidecar fails the application to `needs_attention`; it never leaves an orphaned browser holding a half-filled form.
+- Started and stopped by the Go service as a child process. A crashed sidecar fails the application to `needs_attention`; it never leaves an orphaned browser holding a half-filled form.
 - **Headed by default**, but the browser window is not a UI surface. The product's only UI is the Flutter app ([11](11-frontend.md)); the browser is headed so that screenshots are real and so a human physically at the server *can* take over, not because anyone is expected to be watching it. Headless is allowed only for the dry-run mode below, never for a run that will submit.
 - One `BrowserContext` per site profile, backed by a persistent `user-data-dir` under `~/.dreamjob/browser/<profile>/`, so a session survives across applications and the user logs in once per employer tenant rather than once per application.
 - Hard ceilings per run, enforced by the sidecar and not by the plan: 10 minutes wall clock, 40 navigations, 200 actions. Exceeding any of them aborts to `needs_attention` with the trace kept.
@@ -111,7 +111,7 @@ plan ──> navigate ──> [login? 15] ──> fill ──> upload ──> ve
                              (16)           escalation          check      (§5)                  check
 ```
 
-**Plan.** Dart builds it from the recipe + the application: target URL, artifact paths, the account to use, and the expected confirmation signal. The plan is data; the sidecar executes it. A plan with no `humanConfirm` guard is rejected by the sidecar before the browser opens.
+**Plan.** Go builds it from the recipe + the application: target URL, artifact paths, the account to use, and the expected confirmation signal. The plan is data; the sidecar executes it. A plan with no `humanConfirm` guard is rejected by the sidecar before the browser opens.
 
 **Dry run.** Every new site is first executed with `submit.enabled = false`: fill everything, screenshot, archive, do not press submit. This is how a recipe gets written and how the user sees — on their phone, from the archived screenshots — what would have been sent. Dry runs may be headless; they are the only runs that may.
 
@@ -146,7 +146,7 @@ Through M6, the click is human — and **the human is on their phone**. The prod
 
 Assisted is the default because the alternative quietly makes a desktop presence a product requirement, and it isn't one. Attended exists because some halts genuinely cannot be resolved through a screenshot — and when the user isn't at the machine, those applications simply wait as `needs_attention` or fall back to a manual draft. **Waiting is an acceptable outcome; requiring the user at a desk is not.**
 
-The sidecar will not click a submit control unless it holds a confirmation token minted by the Dart server against a specific `applicationId`, valid for 10 minutes, single use. There is no code path from "form is filled" to "form is submitted" that does not pass through a human. `approved_by` stays `'human'` ([03](03-data-model.md)).
+The sidecar will not click a submit control unless it holds a confirmation token minted by the Go service against a specific `application_id`, valid for 10 minutes, single use. There is no code path from "form is filled" to "form is submitted" that does not pass through a human. `approved_by` stays `'human'` ([03](03-data-model.md)).
 
 **Unattended submission is an M7+ question and is not specified here.** If it ever ships it requires: a green recipe, N prior successes on that exact recipe version, no tier-2 mapping used in the run, no free-text field, and an explicit per-site opt-in. Anything less and the failure mode is a wrong application sent to a real employer with no one watching.
 

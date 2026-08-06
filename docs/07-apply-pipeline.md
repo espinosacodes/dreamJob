@@ -46,25 +46,23 @@ Copying rather than symlinking the master files is deliberate: an application is
 
 ## 2. How the agent is invoked
 
-The backend is Dart, and **there is no official Anthropic Dart SDK**. Two supported paths:
+The backend is Go, and **an official `anthropic-sdk-go` exists** — so unlike the earlier Dart design there is no forced choice between shelling out and hand-rolling HTTP. Both remaining paths are chosen on merit:
 
 **A — `claude -p` as a subprocess (recommended).** The pipeline spawns Claude Code with the application workspace as its working directory and the skills in [`skills/`](../skills/) on its skills path, then sends the stage prompt. The `SKILL.md` files are reused verbatim — the skills stay the product's differentiator instead of being re-implemented as prompt strings, and the workspace-file contract in [08](08-resume-skills.md) works unchanged because it was designed for exactly this.
 
-```dart
-final proc = await Process.run(
-  'claude',
-  ['-p', prompt, '--output-format', 'json'],
-  workingDirectory: workspacePath,
-);
+```go
+cmd := exec.CommandContext(ctx, "claude", "-p", prompt, "--output-format", "json")
+cmd.Dir = workspacePath
+out, err := cmd.Output()
 ```
 
 Requires Claude Code installed on the host — acceptable, since the host is the user's own machine.
 
-**B — raw HTTP to the Messages API.** `POST https://api.anthropic.com/v1/messages` with `package:http`, headers `x-api-key` and `anthropic-version: 2023-06-01`, the skill's instructions inlined as the system prompt and the workspace files as user content. More code and a re-implementation of the skill loading, but it runs without Claude Code installed and returns structured JSON directly. Use `claude-opus-5`; stream anything with a large `max_tokens` so the request doesn't hit an HTTP timeout.
+**B — `anthropic-sdk-go`.** The official SDK: typed requests, streaming, and tool-use with a schema the model must satisfy. Use `claude-opus-5`. This is not merely a fallback — it is the *better* path for any stage whose output is structured rather than prose, which currently means form-field mapping ([14](14-browser-agent.md)), where "return `AnswerBook` keys and nothing else" wants schema enforcement rather than a parsed document.
 
-**C — a LangGraph sidecar.** A small Python service on localhost exposing one endpoint; the Dart pipeline POSTs the workspace paths and gets back the artifacts. This is how the multi-agent and model-evaluation work in [13](13-practice-tracks.md) plugs in, and it is why this section is an interface rather than a hardcoded call. The Dart side must learn nothing about Python beyond a URL.
+**C — a LangGraph sidecar.** A small Python service on localhost exposing one endpoint; the Go pipeline POSTs the workspace paths and gets back the artifacts. This is how the multi-agent and model-evaluation work in [13](13-practice-tracks.md) plugs in, and it is why this section is an interface rather than a hardcoded call. The Go side must learn nothing about Python beyond a URL.
 
-Path A is the default and the fallback for everything else. Paths B and C are alternate backends behind the same contract — keeping A working is what makes cross-model comparison possible.
+Path A is the default for the document-shaped stages and the fallback for everything else. B and C are alternate backends behind the same interface — keeping A working is what makes cross-model comparison possible.
 
 Either way the API key comes from the environment, never from `profile.yaml` ([09](09-compliance.md)).
 

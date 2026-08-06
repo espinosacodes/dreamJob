@@ -2,7 +2,7 @@
 
 **Status: specified.** M3.
 
-The frontend is **Flutter, mobile-first**. One codebase for the swipe deck, the review queue, and the tracker, running on a phone and talking to the Dart backend over the LAN.
+The frontend is **Flutter, mobile-first**. One codebase for the swipe deck, the review queue, and the tracker, running on a phone and talking to the Go backend over the LAN.
 
 **The phone is the entire UX. Everything else is machinery.** Ingestion, matching, the tailoring agent, the browser agent, the credential vault and the mailbox all run on the server and have no interface of their own — the Playwright window in [14](14-browser-agent.md) is not a UI surface, it is a subprocess that happens to be visible. Every decision those subsystems need from a human is rendered in this app, on a phone, over the LAN. If a flow can only be completed by sitting at the server, it is unfinished.
 
@@ -19,6 +19,7 @@ The frontend is **Flutter, mobile-first**. One codebase for the swipe deck, the 
 
 - The app must behave sanely when the server is unreachable: cached deck, queued swipes, an explicit offline banner ([06](06-swipe-ui.md)).
 - No LLM call and no PDF rendering ever happens on the phone. Both live on the server, where the API key and `pdftotext` are.
+- The app talks to exactly one thing: the Go service's HTTP API. It never reaches the Rust core, the browser sidecar, or the mailbox directly, and it holds no credential beyond its pairing token.
 
 ## App architecture
 
@@ -27,8 +28,8 @@ lib/
   main.dart
   app/                  # bootstrap, theme, router, pairing flow
   core/
-    api/                # client (dio) over the shared models
-    models/             # re-exported from dreamjob_shared — NOT redefined here
+    api/                # GENERATED client + a thin hand-written wrapper
+    models/             # GENERATED from contract/openapi.yaml — never edited
     theme/              # tokens, ThemeExtensions, motion constants
     cache/              # drift mirror of deck + pending swipes
   features/
@@ -47,7 +48,9 @@ test/
   golden/               # card layout goldens, keyed to cardVersion
 ```
 
-**`core/models/` re-exports `dreamjob_shared`.** The app never declares its own `JobPosting`. That shared package is the whole reason the backend is Dart ([02](02-architecture.md)); redefining a model here throws it away.
+**`core/models/` holds generated code and nothing else.** The app never hand-writes a `JobPosting`; it is generated from the OpenAPI document in `contract/` along with the API client, and regenerating is a build step, not a copy-paste ([18](18-api-contract.md)).
+
+This is weaker than it used to be, and worth understanding rather than glossing: an earlier design had a shared Dart package compiled into both sides, so a contract change failed the build until both agreed. With a Go server that guarantee is gone — the app and server can now drift and still compile. Contract tests are what replaces it, and they only work if nobody edits generated files.
 
 ### The four backend flows the phone has to surface
 
@@ -68,11 +71,11 @@ Everything from M5 onward is a background subsystem that occasionally needs a hu
 
 | Concern | Package | Note |
 | --- | --- | --- |
-| Models | `dreamjob_shared` (`freezed` + `json_serializable`) | Compiled from the same source as the server |
+| Models | Generated from `contract/openapi.yaml` | **Never hand-written.** See [18](18-api-contract.md) |
 | State | `flutter_riverpod` | Compile-safe, testable |
 | Routing | `go_router` | Deck / review / tracker / profile |
 | HTTP | `dio` | Interceptors for the bearer token, retry, and offline detection |
-| Local cache | `drift` | Same package as the server's store |
+| Local cache | `drift` | The app's own SQLite mirror; unrelated to the server's store now |
 | Secure storage | `flutter_secure_storage` | The pairing token — Keychain / Keystore |
 | Pairing | `mobile_scanner` | Scans the server's QR code |
 | Icons | `iconsax` (see below) | The one item on the reference list directly usable in Flutter |

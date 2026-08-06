@@ -22,15 +22,15 @@ A mailbox is a more sensitive grant than a resume. The resume is a document the 
 
 Tokens live in the OS keychain alongside site credentials ([15](15-accounts-identity.md)), never in `profile.yaml`, never on the phone. The refresh token is the most valuable secret in the system after the resume itself.
 
-**Non-Gmail providers:** IMAP with an app-specific password, same keychain, same filters, same read-only posture — `SELECT` only, never `STORE`, never `EXPUNGE`. The provider abstraction is one Dart interface:
+**Non-Gmail providers:** IMAP with an app-specific password, same keychain, same filters, same read-only posture — `SELECT` only, never `STORE`, never `EXPUNGE`. The provider abstraction is one Go interface:
 
-```dart
-abstract class MailboxAdapter {
-  /// Messages matching [query] since [since]. Never a full-mailbox fetch.
-  Stream<MailMessage> search(MailQuery query, {DateTime? since});
+```go
+type MailboxAdapter interface {
+    // Messages matching query since a cursor. Never a full-mailbox fetch.
+    Search(ctx context.Context, q MailQuery, since *time.Time) (<-chan MailMessage, error)
 
-  /// Incremental sync. Gmail uses historyId; IMAP uses UIDNEXT.
-  Future<SyncCursor> syncFrom(SyncCursor cursor);
+    // Incremental sync. Gmail uses historyId; IMAP uses UIDNEXT.
+    SyncFrom(ctx context.Context, c SyncCursor) (SyncCursor, error)
 }
 ```
 

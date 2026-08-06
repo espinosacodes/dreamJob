@@ -57,7 +57,7 @@ Remote · Mar 2023 – Present
 
 A file that doesn't parse fails the render with the offending line number rather than being best-effort rendered. Silent degradation here means a resume section quietly missing from the PDF that got sent.
 
-Parsing produces `resume.json`, the render IR — a `ResumeDoc` in `dreamjob_shared` ([03](03-data-model.md)). Markdown stays the contract with the skills because it is what a human edits at the review gate; `ResumeDoc` exists so the renderers don't each re-parse prose.
+Parsing produces `resume.json`, the render IR — a `ResumeDoc` in `dreamjob-core` ([03](03-data-model.md)), with its JSON Schema in `contract/` ([18](18-api-contract.md)) so Go can read what the core wrote. Markdown stays the contract with the skills because it is what a human edits at the review gate; `ResumeDoc` exists so the renderers don't each re-parse prose.
 
 ## 3. Assembly
 
@@ -73,7 +73,7 @@ The rewriter only rewrites the experience section ([08](08-resume-skills.md)). A
 
 ## 4. Render
 
-**PDF is the default and the only format guaranteed to exist.** Rendered server-side with the `pdf` package.
+**PDF is the default and the only format guaranteed to exist.** Rendered by `dreamjob-core render` (Rust, `printpdf`) — the render and its verification are one pure step, which is why they live together and why neither is in Go ([02](02-architecture.md)).
 
 Constraints, all inherited from what ATS parsers actually survive:
 
@@ -88,7 +88,7 @@ Constraints, all inherited from what ATS parsers actually survive:
 **DOCX** when the form's accepted-file list demands it (Taleo and older iCIMS instances still do):
 
 1. `pandoc` if installed — deterministic, well-tested.
-2. Otherwise, OOXML template substitution: a checked-in `.docx` skeleton whose `document.xml` is rewritten from `ResumeDoc` and re-zipped. Dart has no mature DOCX writer, and this is a smaller surface than writing one.
+2. Otherwise, OOXML template substitution: a checked-in `.docx` skeleton whose `document.xml` is rewritten from `ResumeDoc` and re-zipped. No ecosystem has a DOCX writer worth depending on here, and a template plus `zip` is a smaller surface than one.
 3. Otherwise, upload the PDF and record `formatDowngrade` on the application, visible at the review gate.
 
 Never rendered: TXT-only submissions (the form will take a PDF), RTF, or "paste your resume as text" boxes — those get `ResumeDoc` flattened to plain text with the same grammar rules, which is a fourth renderer and is explicitly in scope.

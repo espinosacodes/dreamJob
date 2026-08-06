@@ -1,6 +1,6 @@
 # 05 — Matching
 
-**Status: specified.** M2 builds filters + scoring; the learned component lands in M7. The matcher is pure Dart in `dreamjob_server` — it runs server-side, and the app only ever sees `Match` results.
+**Status: specified.** M2 builds filters + scoring; the learned component lands in M7. The matcher lives in `dreamjob-core` (Rust) and is invoked by the Go service as `dreamjob-core match` ([02](02-architecture.md)) — it runs server-side, and the app only ever sees `Match` results.
 
 The matcher's job is to make the deck short enough to finish. It runs in two stages: **hard filters** (binary, unforgiving) then **scoring** (weighted, explainable).
 
@@ -36,15 +36,15 @@ The ±1 seniority tolerance and the +2 years slack are deliberate. Postings infl
 
 Score is a weighted sum of seven components, each normalized to 0–100.
 
-```dart
-class MatchWeights {
-  final double roleFit;       // default 0.25
-  final double stackFit;      // default 0.25
-  final double seniorityFit;  // default 0.15
-  final double locationFit;   // default 0.10
-  final double compFit;       // default 0.15
-  final double companyFit;    // default 0.05
-  final double learned;       // default 0.05 (0 before M7)
+```rust
+pub struct MatchWeights {
+    pub role_fit: f64,       // default 0.25
+    pub stack_fit: f64,      // default 0.25
+    pub seniority_fit: f64,  // default 0.15
+    pub location_fit: f64,   // default 0.10
+    pub comp_fit: f64,       // default 0.15
+    pub company_fit: f64,    // default 0.05
+    pub learned: f64,        // default 0.05 (0 before M7)
 }
 ```
 
@@ -129,11 +129,14 @@ The learned component turns swipe history into a preference signal — without b
 
 ## Testing
 
-The matcher is a pure function, so it is tested as one:
+The matcher is a pure function, so it is tested as one — and being in Rust with no I/O, it is testable to a standard the rest of the system can't reach:
 - A fixture corpus of ~200 real postings, hand-labelled by the user as would-apply / would-skip.
 - Precision and recall against those labels on every matcher change.
 - Golden-file tests on `reasons[]` — an explanation regression is a product regression.
+- **Property tests** (`proptest`): the score is monotonic in each component, always lands in 0–100, is unchanged by reordering `stack`, and never emits an empty `reasons[]` for a passing posting.
 - `matcher_version` bumps on any weight or formula change, invalidating stored `Match` rows.
+
+`computed_at` is an input, not `Utc::now()`. The freshness adjustment needs a clock, and the core is not allowed one ([02](02-architecture.md) invariant 10) — Go passes the time in, which is also what makes the freshness rule testable.
 
 ## Open questions
 

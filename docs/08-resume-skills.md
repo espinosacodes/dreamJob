@@ -58,7 +58,7 @@ The `[verify before sending]` placeholder is load-bearing for the whole product:
 
 The apply pipeline treats `applications/<id>/` as the `resume-workspace/`, prepopulates `profile.md`, `resume.md`, `diagnosis.md`, and `posting.md`, then runs recruiter (mode A) → rewriter non-interactively. Full sequence in [07](07-apply-pipeline.md).
 
-Mechanically this is a `claude -p` subprocess spawned by the Dart backend with that directory as its working directory — so the skills run exactly as they do when a human invokes them, reading and writing the same files. **The file-based contract is what makes automation cheap here**: no skill has to be rewritten to be scriptable.
+Mechanically this is a `claude -p` subprocess spawned by the Go service with that directory as its working directory — so the skills run exactly as they do when a human invokes them, reading and writing the same files. **The file-based contract is what makes automation cheap here**: no skill has to be rewritten to be scriptable.
 
 Two behaviours change under automation:
 
