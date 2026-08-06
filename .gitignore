@@ -21,3 +21,30 @@ resume-workspace/
 
 # Machine-specific skill context: account IDs, paths, credential locations
 LOCAL_CONTEXT.md
+
+# Server storage tree — resume, applications, accounts, sessions, mail.
+# Normally at ~/.dreamjob; these cover running the server from the repo.
+.dreamjob/
+applications/
+artifacts/
+mail/
+answers.yaml
+accounts.yaml
+sites.yaml
+profile.yaml
+metrics.md
+master-resume.md
+*.db
+*.sqlite
+
+# Browser profiles and Playwright traces — cookies here authenticate as you.
+# The real location is ~/.dreamjob/browser/, covered above.
+browser-profiles/
+trace*.zip
+
+# Never commit a credential or a token
+.env
+*.pem
+*.key
+credentials.json
+token.json
