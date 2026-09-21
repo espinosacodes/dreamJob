@@ -1,12 +1,19 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 void main() => runApp(const DreamJobApp());
 
-// Tinder palette copied verbatim, will be rethemed to DreamJob later
-const _tinderOrange = Color(0xFFFF6B33);
-const _tinderPink = Color(0xFFFE2C55);
-const _tinderDark = Color(0xFF111418);
-const _tinderCardBg = Color(0xFF1A1E22);
+// palette from user
+const _p0 = Color(0xFF012a4a);
+const _p1 = Color(0xFF013a63);
+const _p2 = Color(0xFF01497c);
+const _p3 = Color(0xFF014f86);
+const _p4 = Color(0xFF2a6f97);
+const _p5 = Color(0xFF2c7da0);
+const _p6 = Color(0xFF468faf);
+const _p7 = Color(0xFF61a5c2);
+const _p8 = Color(0xFF89c2d9);
+const _p9 = Color(0xFFa9d6e5);
 
 class DreamJobApp extends StatelessWidget {
   const DreamJobApp({super.key});
@@ -17,13 +24,117 @@ class DreamJobApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
+        scaffoldBackgroundColor: _p0,
+        colorScheme: ColorScheme.fromSeed(seedColor: _p4, brightness: Brightness.dark),
         fontFamily: 'Roboto',
-        scaffoldBackgroundColor: Colors.white,
-        colorScheme: ColorScheme.fromSeed(seedColor: _tinderPink),
       ),
       home: const SplashScreen(),
     );
   }
+}
+
+// ---------- shared glass ----------
+class GlassCard extends StatelessWidget {
+  final Widget child;
+  final double radius;
+  final EdgeInsetsGeometry? padding;
+  final double blur;
+  final double opacity;
+  const GlassCard({super.key, required this.child, this.radius = 20, this.padding, this.blur = 18, this.opacity = 0.14});
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(opacity),
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: Colors.white.withOpacity(0.18), width: 1),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.white.withOpacity(0.18), Colors.white.withOpacity(0.06)],
+            ),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class OwlIcon extends StatelessWidget {
+  final double size;
+  const OwlIcon({super.key, this.size = 72});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(size * 0.28),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [_p1, _p3, _p0]),
+        border: Border.all(color: Colors.white.withOpacity(0.15)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 18, offset: const Offset(0, 8))],
+      ),
+      child: Center(
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // subtle owl body silhouette
+            Icon(Icons.pets, size: size * 0.55, color: _p5.withOpacity(0.35)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _eye(size * 0.32),
+                SizedBox(width: size * 0.04),
+                _eye(size * 0.32),
+              ],
+            ),
+            // glasses bridge
+            Positioned(
+              top: size * 0.36,
+              child: Container(width: size * 0.08, height: 3, color: _p0),
+            ),
+            // beak
+            Positioned(
+              top: size * 0.52,
+              child: Container(
+                width: size * 0.08,
+                height: size * 0.08,
+                decoration: BoxDecoration(color: _p8.withOpacity(0.9), borderRadius: BorderRadius.circular(2)),
+                child: const Icon(Icons.arrow_drop_down, size: 14, color: _p0),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _eye(double s) => Container(
+        width: s,
+        height: s,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: _p0, width: 3),
+        ),
+        child: Center(
+          child: Container(
+            width: s * 0.45,
+            height: s * 0.45,
+            decoration: const BoxDecoration(color: _p0, shape: BoxShape.circle),
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Container(width: s * 0.12, height: s * 0.12, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+            ),
+          ),
+        ),
+      );
 }
 
 // ---------- SPLASH ----------
@@ -37,11 +148,9 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(milliseconds: 1800), () {
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const GoogleLoginScreen()));
     });
   }
 
@@ -50,109 +159,121 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [_tinderOrange, _tinderPink, Color(0xFFE91E63)],
-          ),
+          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_p0, _p1, _p2, _p4]),
         ),
-        child: const Stack(
+        child: Stack(
           children: [
+            // liquid orbs
+            Positioned(top: -60, right: -40, child: _orb(220, _p6.withOpacity(0.35))),
+            Positioned(bottom: -30, left: -50, child: _orb(260, _p5.withOpacity(0.28))),
+            Positioned(top: 180, left: 40, child: _orb(120, _p8.withOpacity(0.18))),
             Center(
-              child: Row(
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.local_fire_department, color: Colors.white, size: 48),
-                  SizedBox(width: 8),
-                  Text('tinder',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 52,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1)),
+                  const OwlIcon(size: 96),
+                  const SizedBox(height: 18),
+                  const Text('dreamJob', style: TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w800, letterSpacing: -1.2)),
+                  const SizedBox(height: 6),
+                  Text('swipe. match. hired.', style: TextStyle(color: _p9.withOpacity(0.9), fontSize: 13, letterSpacing: 3, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 28),
+                  GlassCard(
+                    radius: 24,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    opacity: 0.10,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Container(width: 8, height: 8, decoration: const BoxDecoration(color: _p8, shape: BoxShape.circle)),
+                      const SizedBox(width: 8),
+                      Text('agente que aplica por ti', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12)),
+                    ]),
+                  ),
                 ],
               ),
             ),
             Positioned(
-              bottom: 48,
+              bottom: 36,
               left: 0,
               right: 0,
-              child: Column(
-                children: [
-                  Text('from',
-                      style: TextStyle(color: Colors.white70, fontSize: 14)),
-                  Text('MatchGroup',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w600)),
-                ],
-              ),
+              child: Center(child: Text('Prototype  •  pixel ready', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11))),
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _orb(double s, Color c) => Container(
+        width: s,
+        height: s,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: c, boxShadow: [BoxShadow(color: c, blurRadius: 40)]),
+      );
 }
 
-// ---------- LOGIN ----------
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+// ---------- GOOGLE LOGIN + GMAIL OTP ----------
+class GoogleLoginScreen extends StatelessWidget {
+  const GoogleLoginScreen({super.key});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [_tinderOrange, _tinderPink, Color(0xFFE91E63)],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_p0, _p1, _p2])),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               children: [
-                Align(
-                  alignment: Alignment.topLeft,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                    onPressed: () {},
+                const SizedBox(height: 32),
+                const OwlIcon(size: 64),
+                const SizedBox(height: 12),
+                const Text('Bienvenido a dreamJob', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                Text('Tu agente aplica mientras tu haces swipe', textAlign: TextAlign.center, style: TextStyle(color: _p9.withOpacity(0.85), fontSize: 13)),
+                const SizedBox(height: 28),
+                GlassCard(
+                  radius: 24,
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    children: [
+                      Row(children: [
+                        Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.mail, color: _p2, size: 20)),
+                        const SizedBox(width: 12),
+                        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Conexion Gmail para OTP', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)), Text('El agente lee el codigo de verificacion automaticamente', style: TextStyle(color: Colors.white70, fontSize: 11))])),
+                        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: _p8.withOpacity(0.9), borderRadius: BorderRadius.circular(12)), child: const Text('auto', style: TextStyle(color: _p0, fontSize: 10, fontWeight: FontWeight.w800))),
+                      ]),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GmailConnectScreen())),
+                          icon: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                            child: const Text('G', style: TextStyle(color: _p2, fontWeight: FontWeight.w900, fontSize: 14)),
+                          ),
+                          label: const Text('Continuar con Google', style: TextStyle(color: _p0, fontWeight: FontWeight.w700, fontSize: 15)),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)), elevation: 0),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text('Solo Google. No Apple, no Line. OTP llega a tu Gmail y el agente lo resuelve.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11)),
+                    ],
                   ),
                 ),
                 const Spacer(),
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.local_fire_department, color: Colors.white, size: 44),
-                    SizedBox(width: 8),
-                    Text('tinder',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 48,
-                            fontWeight: FontWeight.w800)),
-                  ],
-                ),
-                const Spacer(),
-                const Text(
-                  "By tapping 'Create account' or 'Sign in' you agree to our Terms. Learn how we process your data in our Privacy Policy and Cookies Policy.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white, fontSize: 12, height: 1.4),
-                ),
-                const SizedBox(height: 24),
-                _loginBtn(Icons.apple, 'Sign in with Apple', () => _goHome(context)),
-                _loginBtn(Icons.chat_bubble, 'Sign in with Line', () => _goHome(context)),
-                _loginBtn(Icons.phone, 'Sign in with Phone Number',
-                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PhoneScreen()))),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('Trouble signing in?',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                GlassCard(
+                  radius: 16,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  opacity: 0.08,
+                  child: Row(children: [
+                    const Icon(Icons.shield_outlined, color: _p9, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text('Nunca pedimos tu password. OAuth Gmail scope gmail.readonly para codigos. 2FA por mail o SMS tu eliges.', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11))),
+                  ]),
                 ),
                 const SizedBox(height: 12),
+                TextButton(onPressed: () {}, child: Text('Trouble signing in?', style: TextStyle(color: _p9.withOpacity(0.8), fontSize: 12))),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -160,70 +281,99 @@ class LoginScreen extends StatelessWidget {
       ),
     );
   }
-
-  static void _goHome(BuildContext c) => Navigator.pushReplacement(
-      c, MaterialPageRoute(builder: (_) => const HomeShell()));
-
-  static Widget _loginBtn(IconData icon, String label, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: SizedBox(
-        width: double.infinity,
-        height: 52,
-        child: ElevatedButton.icon(
-          onPressed: onTap,
-          icon: Icon(icon, color: _tinderDark),
-          label: Text(label,
-              style: const TextStyle(
-                  color: _tinderDark, fontSize: 16, fontWeight: FontWeight.w600)),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
-class PhoneScreen extends StatelessWidget {
-  const PhoneScreen({super.key});
+class GmailConnectScreen extends StatefulWidget {
+  const GmailConnectScreen({super.key});
+  @override
+  State<GmailConnectScreen> createState() => _GmailConnectScreenState();
+}
+
+class _GmailConnectScreenState extends State<GmailConnectScreen> {
+  bool gmail = true;
+  String twoFA = 'mail'; // mail | sms
+  final phoneCtrl = TextEditingController(text: '+57 300 000 0000');
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context))),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: _p0,
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => Navigator.pop(context)), title: const Text('Configura tu agente', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700))),
+      body: Container(
+        decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_p0, _p1])),
+        child: ListView(
+          padding: const EdgeInsets.all(20),
           children: [
-            const Text('Your phone number?',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 24),
-            TextField(
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                hintText: '+57 300 000 0000',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+            GlassCard(
+              radius: 20,
+              padding: const EdgeInsets.all(16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [const Icon(Icons.auto_awesome, color: _p8, size: 18), const SizedBox(width: 8), const Text('Agente auto-aplica', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))]),
+                const SizedBox(height: 8),
+                Text('Cuando una empresa pide codigo de verificacion, el agente lo extrae de tu Gmail por regex y completa la aplicacion. Tu no copias nada.', style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12, height: 1.4)),
+                const SizedBox(height: 12),
+                Row(children: [
+                  const Icon(Icons.mail_outline, color: _p9, size: 18),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('Gmail conectado', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600))),
+                  Switch(value: gmail, activeColor: _p7, onChanged: (v) => setState(() => gmail = v)),
+                ]),
+                if (!gmail) Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: Colors.orange.withOpacity(0.15), borderRadius: BorderRadius.circular(12)), child: const Text('Sin Gmail el agente no puede auto completar OTP. Se pedira manual.', style: TextStyle(color: Colors.orange, fontSize: 11))),
+              ]),
             ),
-            const Spacer(),
+            const SizedBox(height: 16),
+            const Text('2FA preferido', style: TextStyle(color: _p9, fontWeight: FontWeight.w700, fontSize: 13)),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: _choice('Por mail', Icons.mail, twoFA == 'mail', () => setState(() => twoFA = 'mail'))),
+              const SizedBox(width: 12),
+              Expanded(child: _choice('Por SMS', Icons.sms, twoFA == 'sms', () => setState(() => twoFA = 'sms'))),
+            ]),
+            const SizedBox(height: 12),
+            GlassCard(
+              radius: 16,
+              padding: const EdgeInsets.all(14),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(twoFA == 'mail' ? 'Codigo llega a tu Gmail' : 'Codigo llega a tu telefono', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 6),
+                Text(twoFA == 'mail' ? 'Recomendado. El agente lo lee en segundos sin interrumpir tu swipe.' : 'El agente te mostrara el prompt SMS y tu lo pegas. Latencia ~ 1 min.', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11)),
+                if (twoFA == 'sms') ...[
+                  const SizedBox(height: 10),
+                  TextField(controller: phoneCtrl, style: const TextStyle(color: Colors.white), decoration: InputDecoration(filled: true, fillColor: Colors.white.withOpacity(0.08), hintText: 'Telefono', hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
+                ],
+              ]),
+            ),
+            const SizedBox(height: 20),
             SizedBox(
-              width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: _tinderDark, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28))),
-                onPressed: () => Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (_) => const HomeShell())),
-                child: const Text('Next', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(backgroundColor: _p4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26))),
+                onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const HomeShell()), (_) => false),
+                child: const Text('Conectar y entrar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
               ),
             ),
+            const SizedBox(height: 10),
+            Center(child: Text('OAuth Google  •  gmail.readonly  •  puedes revocar en Perfil', style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 11))),
           ],
         ),
       ),
     );
   }
+
+  Widget _choice(String label, IconData icon, bool sel, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: GlassCard(
+          radius: 16,
+          opacity: sel ? 0.18 : 0.08,
+          padding: const EdgeInsets.all(14),
+          child: Column(children: [
+            Icon(icon, color: sel ? _p8 : Colors.white70, size: 22),
+            const SizedBox(height: 6),
+            Text(label, style: TextStyle(color: sel ? Colors.white : Colors.white70, fontWeight: FontWeight.w700, fontSize: 12)),
+            const SizedBox(height: 4),
+            Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: sel ? _p8 : Colors.transparent, border: Border.all(color: Colors.white30))),
+          ]),
+        ),
+      );
 }
 
 // ---------- HOME SHELL ----------
@@ -234,75 +384,73 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  int index = 0;
-  final pages = const [DeckScreen(), ExploreScreen(), LikesScreen(), ChatScreen(), ProfileScreen()];
+  int idx = 0;
+  final pages = const [DeckScreen(), ApplicationsScreen(), InterviewsScreen(), CoachScreen(), ProfileScreen()];
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: index == 0 ? _tinderDark : Colors.white,
-      body: pages[index],
+      body: Container(
+        decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_p0, _p1, _p2])),
+        child: pages[idx],
+      ),
       bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-        decoration: BoxDecoration(color: _tinderDark, borderRadius: BorderRadius.circular(32)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _navItem(0, Icons.local_fire_department, 'Swipe'),
-              _navItem(1, Icons.explore_outlined, 'Explore'),
-              _navItem(2, Icons.favorite_border, 'Likes', badge: '48'),
-              _navItem(3, Icons.chat_bubble_outline, 'Chat', dot: true),
-              _navItem(4, Icons.person_outline, 'Profile'),
-            ],
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 18),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.10), borderRadius: BorderRadius.circular(28), border: Border.all(color: Colors.white.withOpacity(0.14))),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _nav(0, Icons.style, 'Deck'),
+                  _nav(1, Icons.article_outlined, 'Apps', badge: '4'),
+                  _nav(2, Icons.event_available, 'Entrevistas', badge: '3'),
+                  _nav(3, Icons.phone_in_talk, 'Coach', dot: true),
+                  _nav(4, Icons.person_outline, 'Perfil'),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _navItem(int i, IconData icon, String label, {String? badge, bool dot = false}) {
-    final active = i == index;
+  Widget _nav(int i, IconData icon, String label, {String? badge, bool dot = false}) {
+    final sel = i == idx;
     return GestureDetector(
-      onTap: () => setState(() => index = i),
+      onTap: () => setState(() => idx = i),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? Colors.white24 : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(clipBehavior: Clip.none, children: [
-              Icon(icon, color: active ? Colors.white : Colors.white70, size: 22),
-              if (badge != null)
-                Positioned(
-                  right: -10,
-                  top: -6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    decoration: BoxDecoration(color: const Color(0xFFFFC107), borderRadius: BorderRadius.circular(10)),
-                    child: Text(badge, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
-                  ),
-                ),
-              if (dot)
-                Positioned(
-                  right: -4,
-                  top: -2,
-                  child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: _tinderPink, shape: BoxShape.circle)),
-                ),
-            ]),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(color: active ? Colors.white : Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
-          ],
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(color: sel ? Colors.white.withOpacity(0.16) : Colors.transparent, borderRadius: BorderRadius.circular(20)),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Stack(clipBehavior: Clip.none, children: [
+            Icon(icon, color: sel ? Colors.white : Colors.white70, size: 20),
+            if (badge != null)
+              Positioned(right: -10, top: -6, child: Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2), decoration: BoxDecoration(color: _p8, borderRadius: BorderRadius.circular(10)), child: Text(badge, style: const TextStyle(color: _p0, fontSize: 10, fontWeight: FontWeight.w800)))),
+            if (dot) Positioned(right: -4, top: -2, child: Container(width: 8, height: 8, decoration: BoxDecoration(color: _p7, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)))),
+          ]),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(color: sel ? Colors.white : Colors.white70, fontSize: 10, fontWeight: FontWeight.w600)),
+        ]),
       ),
     );
   }
 }
 
-// ---------- DECK ----------
+// ---------- DECK JOBS ----------
+class JobCardData {
+  final String title, company, location, workMode, comp, compProv, posted;
+  final List<String> stack;
+  final List<String> bullets;
+  final List<String> reasons;
+  final String? warning;
+  JobCardData({required this.title, required this.company, required this.location, required this.workMode, required this.comp, required this.compProv, required this.posted, required this.stack, required this.bullets, required this.reasons, this.warning});
+}
+
 class DeckScreen extends StatefulWidget {
   const DeckScreen({super.key});
   @override
@@ -312,463 +460,175 @@ class DeckScreen extends StatefulWidget {
 class _DeckScreenState extends State<DeckScreen> {
   int top = 0;
   double drag = 0;
-  bool showMatch = false;
-  final cards = [
-    _CardData(
-        name: 'Jasmine',
-        age: 27,
-        image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600',
-        tags: ['Dog', 'Socially on weekends', 'Non-smoker', 'Often', 'Socially active', 'In a spectrum'],
-        bio: 'Basics & Lifestyle'),
-    _CardData(
-        name: 'Yunieee',
-        age: 21,
-        image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600',
-        tags: ['Pilates', 'Coffee', 'Travel'],
-        bio: 'Looking for interesting people'),
-    _CardData(
-        name: 'Anya',
-        age: 20,
-        image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600',
-        tags: ['Design', 'Music', 'Yoga'],
-        bio: '3 Photos'),
-    _CardData(
-        name: 'Sofia',
-        age: 24,
-        image: 'https://images.unsplash.com/photo-1488426862026-3ee34e13d85d?w=600',
-        tags: ['Tech', 'Hiking', 'Books'],
-        bio: 'New friends'),
+  bool showApply = false;
+  final jobs = [
+    JobCardData(title: 'Senior Backend Engineer', company: 'Fathom Analytics', location: 'Remote  •  EU timezone UTC+0 to +3', workMode: 'Remote', comp: '€95k – €120k', compProv: 'posted', posted: 'hace 3 dias', stack: ['Go', 'Kubernetes', 'Postgres', 'gRPC', 'Redis', '+2'], bullets: ['Own the payments ingestion pipeline', '5-person platform team, no on-call', 'Series B, 60 people'], reasons: ['Go + Kubernetes en tu stack', 'Remote en tu banda', 'Sobre tu comp floor'], warning: 'Title dice Remote, body dice 3 dias en oficina'),
+    JobCardData(title: 'Platform Engineer', company: 'Northwind', location: 'Bogota  •  Hybrid 2d', workMode: 'Hybrid', comp: '\$80k – \$110k', compProv: 'estimado', posted: 'hace 1 dia', stack: ['Go', 'AWS', 'Terraform', 'Docker'], bullets: ['Build internal developer platform', '200 engineers as users', 'No visa needed'], reasons: ['Match fuerte en Go', 'Hybrid tolerable', 'Comp en rango'], warning: null),
+    JobCardData(title: 'Staff Engineer, Data', company: 'Mercury', location: 'Remote  •  LATAM', workMode: 'Remote', comp: 'no range posted', compProv: '', posted: 'hace 5 dias', stack: ['Python', 'Postgres', 'Kafka'], bullets: ['Lead data ingestion', 'Greenfield, 0 a 1', 'Reporta a CTO'], reasons: ['Python en want list', 'Remote LATAM', 'Staff level'], warning: null),
   ];
 
   void _swipe(bool right) {
     if (right) {
-      setState(() => showMatch = true);
-      Future.delayed(const Duration(milliseconds: 1400), () {
-        if (mounted) setState(() => showMatch = false);
-      });
+      setState(() => showApply = true);
+      Future.delayed(const Duration(milliseconds: 1400), () => setState(() => showApply = false));
     }
-    setState(() {
-      top = (top + 1) % cards.length;
-      drag = 0;
-    });
+    setState(() { top = (top + 1) % jobs.length; drag = 0; });
   }
 
   @override
   Widget build(BuildContext context) {
-    final card = cards[top];
+    final j = jobs[top];
     return SafeArea(
       child: Stack(
         children: [
-          Column(
-            children: [
-              // top filter bar
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(12)),
-                      child: const Icon(Icons.tune, color: Colors.white, size: 20),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _chip('For You', true),
-                            _chip('Astrology', false),
-                            _chip('Double Date', false),
-                            _chip('Music', false),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const Icon(Icons.bolt, color: Color(0xFF9C27B0), size: 26),
-                  ],
-                ),
-              ),
-              // card
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: GestureDetector(
-                    onHorizontalDragUpdate: (d) => setState(() => drag += d.delta.dx),
-                    onHorizontalDragEnd: (_) {
-                      if (drag > 90) _swipe(true);
-                      if (drag < -90) _swipe(false);
-                      setState(() => drag = 0);
-                    },
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(card: card))),
-                    child: Transform.rotate(
-                      angle: drag * 0.0008,
-                      child: Transform.translate(
-                        offset: Offset(drag * 0.5, 0),
-                        child: Stack(
-                          children: [
-                            // card container
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(24),
-                                image: DecorationImage(image: NetworkImage(card.image), fit: BoxFit.cover),
-                              ),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(24),
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [Colors.transparent, Colors.black54],
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // dots indicator
-                                      Row(
-                                        children: List.generate(6, (i) => Expanded(
-                                          child: Container(
-                                              height: 3,
-                                              margin: EdgeInsets.only(right: i==5?0:4),
-                                              decoration: BoxDecoration(
-                                                  color: i==0?Colors.white:Colors.white38,
-                                                  borderRadius: BorderRadius.circular(2))),
-                                        )),
-                                      ),
-                                      const Spacer(),
-                                      Row(
-                                        children: [
-                                          Text('${card.name} ${card.age}',
-                                              style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800)),
-                                          const SizedBox(width: 6),
-                                          const Icon(Icons.verified, color: Colors.blueAccent, size: 20),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(8)),
-                                        child: Text(card.bio, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Wrap(
-                                        spacing: 6,
-                                        runSpacing: 6,
-                                        children: card.tags
-                                            .map((t) => Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white24)),
-                                                  child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 11)),
-                                                ))
-                                            .toList(),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            // swipe labels
-                            if (drag > 40)
-                              Positioned(
-                                top: 24,
-                                left: 16,
-                                child: Transform.rotate(
-                                  angle: -0.2,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(border: Border.all(color: Colors.greenAccent, width: 3), borderRadius: BorderRadius.circular(8)),
-                                    child: const Text('LIKE', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.w900, fontSize: 22)),
-                                  ),
-                                ),
-                              ),
-                            if (drag < -40)
-                              Positioned(
-                                top: 24,
-                                right: 16,
-                                child: Transform.rotate(
-                                  angle: 0.2,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(border: Border.all(color: _tinderPink, width: 3), borderRadius: BorderRadius.circular(8)),
-                                    child: const Text('NOPE', style: TextStyle(color: _tinderPink, fontWeight: FontWeight.w900, fontSize: 22)),
-                                  ),
-                                ),
-                              ),
-                            Positioned(
-                              right: 12,
-                              bottom: 90,
-                              child: GestureDetector(
-                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(card: card))),
-                                child: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(color: Colors.black54, shape: BoxShape.circle, border: Border.all(color: Colors.white)),
-                                  child: const Icon(Icons.arrow_upward, color: Colors.white, size: 20),
-                                ),
-                              ),
-                            ),
-                          ],
+          Column(children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+              child: Row(children: [
+                const OwlIcon(size: 32),
+                const SizedBox(width: 10),
+                GlassCard(radius: 14, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), opacity: 0.10, child: Row(children: [Icon(Icons.tune, color: Colors.white.withOpacity(0.9), size: 16), const SizedBox(width: 6), Text('${top + 1} / ${jobs.length}  •  deck diario', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 11, fontWeight: FontWeight.w600))])),
+                const Spacer(),
+                GlassCard(radius: 12, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), opacity: 0.12, child: Row(children: [const Icon(Icons.bolt, color: _p8, size: 16), const SizedBox(width: 4), Text('STRONG', style: TextStyle(color: _p9.withOpacity(0.9), fontSize: 11, fontWeight: FontWeight.w800))])),
+              ]),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: GestureDetector(
+                  onHorizontalDragUpdate: (d) => setState(() => drag += d.delta.dx),
+                  onHorizontalDragEnd: (_) { if (drag > 90) _swipe(true); else if (drag < -90) _swipe(false); setState(() => drag = 0); },
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => JobDetail(job: j))),
+                  child: Transform.rotate(
+                    angle: drag * 0.0007,
+                    child: Transform.translate(
+                      offset: Offset(drag * 0.35, 0),
+                      child: GlassCard(
+                        radius: 24,
+                        padding: const EdgeInsets.all(0),
+                        opacity: 0.14,
+                        child: Container(
+                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.white.withOpacity(0.10), Colors.white.withOpacity(0.04)])),
+                          child: Padding(
+                            padding: const EdgeInsets.all(18),
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Row(children: [Expanded(child: Text(j.title, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, height: 1.1))), Container(width: 8, height: 8, decoration: const BoxDecoration(color: _p8, shape: BoxShape.circle))]),
+                              const SizedBox(height: 4),
+                              Text(j.company, style: TextStyle(color: _p9.withOpacity(0.95), fontSize: 15, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 10),
+                              _kv(Icons.public, j.location),
+                              const SizedBox(height: 6),
+                              _kv(Icons.payments_outlined, '${j.comp}  •  ${j.compProv}  •  ${j.posted}'),
+                              const SizedBox(height: 6),
+                              Wrap(spacing: 6, runSpacing: 6, children: j.stack.map((s) => Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5), decoration: BoxDecoration(color: s.contains('Go') || s.contains('Kubernetes') ? _p7.withOpacity(0.9) : Colors.white.withOpacity(0.10), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withOpacity(0.14))), child: Text(s, style: TextStyle(color: s.contains('Go') ? Colors.white : Colors.white.withOpacity(0.85), fontSize: 11, fontWeight: FontWeight.w600)))).toList()),
+                              const SizedBox(height: 12),
+                              Container(height: 1, color: Colors.white.withOpacity(0.10)),
+                              const SizedBox(height: 12),
+                              ...j.bullets.map((b) => Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(margin: const EdgeInsets.only(top: 6), width: 6, height: 6, decoration: const BoxDecoration(color: _p8, shape: BoxShape.circle)), const SizedBox(width: 8), Expanded(child: Text(b, style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12, height: 1.3)))]))),
+                              const SizedBox(height: 10),
+                              Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: _p0.withOpacity(0.35), borderRadius: BorderRadius.circular(14), border: Border.all(color: _p8.withOpacity(0.25))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Por que ves esto', style: TextStyle(color: _p9.withOpacity(0.9), fontSize: 11, fontWeight: FontWeight.w700)), const SizedBox(height: 4), Text(j.reasons.join('  •  '), style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11))])),
+                              if (j.warning != null) ...[const SizedBox(height: 8), Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.orange.withOpacity(0.14), borderRadius: BorderRadius.circular(10)), child: Row(children: [const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 16), const SizedBox(width: 6), Expanded(child: Text(j.warning!, style: const TextStyle(color: Colors.orange, fontSize: 11)))]))],
+                              const Spacer(),
+                              Row(children: [Expanded(child: OutlinedButton(onPressed: () => _swipe(false), style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.white.withOpacity(0.18)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))), child: const Text('←  Skip', style: TextStyle(color: Colors.white)))), const SizedBox(width: 10), Expanded(child: ElevatedButton(onPressed: () => _swipe(true), style: ElevatedButton.styleFrom(backgroundColor: _p4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))), child: const Text('Apply  →', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))))]),
+                              const SizedBox(height: 4),
+                              Center(child: Text('⌄  full description', style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 10))),
+                            ]),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              // action buttons
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _roundBtn(Icons.replay, Colors.grey, 22, () => setState(() => top = (top - 1) % cards.length)),
-                    _roundBtn(Icons.close, _tinderPink, 30, () => _swipe(false), big: true),
-                    _roundBtn(Icons.star, Colors.blueAccent, 26, () => _swipe(true)),
-                    _roundBtn(Icons.favorite, const Color(0xFF7ED321), 28, () => _swipe(true), big: true),
-                    _roundBtn(Icons.send, Colors.blue, 22, () {}),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 80),
-            ],
-          ),
-          if (showMatch) const MatchOverlay(),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+                _round(Icons.undo, Colors.white70, 20, () => setState(() => top = (top - 1) % jobs.length)),
+                _round(Icons.close, _p8, 26, () => _swipe(false), big: true),
+                _round(Icons.star, _p7, 22, () => _swipe(true)),
+                _round(Icons.favorite, _p6, 26, () => _swipe(true), big: true),
+                _round(Icons.bookmark_border, Colors.white70, 20, () {}),
+              ]),
+            ),
+            const SizedBox(height: 90),
+          ]),
+          if (drag > 40) Positioned(top: 90, left: 24, child: Transform.rotate(angle: -0.18, child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(border: Border.all(color: _p8, width: 3), borderRadius: BorderRadius.circular(8)), child: const Text('APPLY', style: TextStyle(color: _p8, fontWeight: FontWeight.w900, fontSize: 22))))),
+          if (drag < -40) Positioned(top: 90, right: 24, child: Transform.rotate(angle: 0.18, child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(border: Border.all(color: Colors.white70, width: 3), borderRadius: BorderRadius.circular(8)), child: const Text('SKIP', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w900, fontSize: 22))))),
+          if (showApply) _applyOverlay(),
         ],
       ),
     );
   }
 
-  Widget _chip(String t, bool sel) => Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(color: sel ? Colors.white : Colors.white10, borderRadius: BorderRadius.circular(20)),
-        child: Text(t, style: TextStyle(color: sel ? Colors.black : Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-      );
+  Widget _kv(IconData i, String t) => Row(children: [Icon(i, color: _p9.withOpacity(0.85), size: 14), const SizedBox(width: 6), Expanded(child: Text(t, style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12)))]);
 
-  Widget _roundBtn(IconData i, Color c, double s, VoidCallback onTap, {bool big = false}) => GestureDetector(
-        onTap: onTap,
+  Widget _round(IconData i, Color c, double s, VoidCallback onTap, {bool big = false}) => GestureDetector(onTap: onTap, child: GlassCard(radius: 99, padding: EdgeInsets.all(big ? 16 : 12), opacity: 0.12, child: Icon(i, color: c, size: s)));
+
+  Widget _applyOverlay() => Positioned.fill(
         child: Container(
-          width: big ? 64 : 52,
-          height: big ? 64 : 52,
-          decoration: BoxDecoration(
-            color: Colors.black,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white12),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8)],
-          ),
-          child: Icon(i, color: c, size: s),
-        ),
-      );
-}
-
-class _CardData {
-  final String name;
-  final int age;
-  final String image;
-  final List<String> tags;
-  final String bio;
-  _CardData({required this.name, required this.age, required this.image, required this.tags, required this.bio});
-}
-
-// ---------- DETAIL ----------
-class DetailScreen extends StatelessWidget {
-  final _CardData card;
-  const DetailScreen({super.key, required this.card});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 420,
-            pinned: true,
-            leading: IconButton(icon: const Icon(Icons.keyboard_arrow_down, size: 32), onPressed: () => Navigator.pop(context)),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Image.network(card.image, fit: BoxFit.cover),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Text('${card.name}, ${card.age}', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.verified, color: Colors.blue),
-                  ]),
-                  const SizedBox(height: 8),
-                  const Text('Looking for  New friends', style: TextStyle(color: Colors.black54)),
-                  const SizedBox(height: 16),
-                  const Text('About me', style: TextStyle(fontWeight: FontWeight.w700)),
-                  const Text('Looking for interesting people to chat and hang out with. Love dogs and good coffee.'),
-                  const SizedBox(height: 16),
-                  Wrap(spacing: 8, runSpacing: 8, children: card.tags.map((t) => Chip(label: Text(t))).toList()),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: _tinderPink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28))),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Liked!'))); 
-                      },
-                      child: const Text('Like', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class MatchOverlay extends StatelessWidget {
-  const MatchOverlay({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: _tinderPink.withOpacity(0.95),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('It\'s a Match!', style: TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic)),
-            const SizedBox(height: 8),
-            const Text('You and Jasmine liked each other', style: TextStyle(color: Colors.white, fontSize: 16)),
-            const SizedBox(height: 24),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              _avatar('https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200'),
-              const SizedBox(width: 16),
-              _avatar('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200'),
-            ]),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)), padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14)),
-              onPressed: () {},
-              child: const Text('Send a Message', style: TextStyle(color: _tinderPink, fontWeight: FontWeight.w700)),
-            ),
-            TextButton(onPressed: () {}, child: const Text('Keep Swiping', style: TextStyle(color: Colors.white))),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _avatar(String url) => CircleAvatar(radius: 48, backgroundImage: NetworkImage(url));
-}
-
-// ---------- EXPLORE ----------
-class ExploreScreen extends StatelessWidget {
-  const ExploreScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final cats = ['For You', 'Astrology', 'Double Date', 'Music', 'Festival Mode', 'Verified', 'College', 'Gamer'];
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Explore', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 12),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 1.2, crossAxisSpacing: 12, mainAxisSpacing: 12),
-              itemCount: cats.length,
-              itemBuilder: (_, i) => Container(
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), gradient: LinearGradient(colors: [Colors.pink.shade400, Colors.orange.shade400])),
-                child: Center(child: Text(cats[i], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16))),
-              ),
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-}
-
-// ---------- LIKES ----------
-class LikesScreen extends StatelessWidget {
-  const LikesScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(color: const Color(0xFFFFF3E0), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.orange.shade200)),
-            child: const Row(children: [Icon(Icons.star, color: Colors.orange), SizedBox(width: 8), Text('48 Likes  •  See who likes you', style: TextStyle(fontWeight: FontWeight.w700))]),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.75, crossAxisSpacing: 12, mainAxisSpacing: 12),
-              itemCount: 6,
-              itemBuilder: (_, i) => ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Stack(children: [
-                  Image.network('https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400', fit: BoxFit.cover, width: double.infinity, height: double.infinity),
-                  Container(color: Colors.white.withOpacity(0.6)),
-                  const Center(child: Icon(Icons.lock, size: 32)),
-                  Positioned(bottom: 8, left: 8, child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)), child: const Text('Blurred', style: TextStyle(color: Colors.white, fontSize: 11)))),
-                ]),
-              ),
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-}
-
-// ---------- CHAT ----------
-class ChatScreen extends StatelessWidget {
-  const ChatScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Chat', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 80,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: 5,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, i) => Column(children: [
-                CircleAvatar(radius: 28, backgroundImage: NetworkImage('https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200')),
-                const SizedBox(height: 4),
-                Text(['Jasmine', 'Yunieee', 'Anya', 'Sofia', 'Mia'][i], style: const TextStyle(fontSize: 11)),
+          decoration: BoxDecoration(color: _p0.withOpacity(0.88), borderRadius: BorderRadius.circular(24)),
+          child: Center(
+            child: GlassCard(
+              radius: 24,
+              padding: const EdgeInsets.all(24),
+              opacity: 0.16,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.auto_awesome, color: _p8, size: 32),
+                const SizedBox(height: 10),
+                const Text('Aplicacion en cola', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                Text('Agente personalizando resume + cover letter', textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12)),
+                const SizedBox(height: 14),
+                SizedBox(height: 3, width: 160, child: LinearProgressIndicator(color: _p8, backgroundColor: Colors.white.withOpacity(0.12))),
+                const SizedBox(height: 10),
+                Text('Undo disponible 10s', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10)),
               ]),
             ),
           ),
-          const Divider(),
-          const Text('Messages', style: TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
+        ),
+      );
+}
+
+class JobDetail extends StatelessWidget {
+  final JobCardData job;
+  const JobDetail({super.key, required this.job});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _p0,
+      appBar: AppBar(backgroundColor: Colors.transparent, leading: IconButton(icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 28), onPressed: () => Navigator.pop(context)), title: Text(job.company, style: const TextStyle(color: Colors.white))),
+      body: ListView(padding: const EdgeInsets.all(16), children: [
+        Text(job.title, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 6),
+        Text('${job.workMode}  •  ${job.location}  •  ${job.comp}', style: TextStyle(color: _p9.withOpacity(0.9), fontSize: 12)),
+        const SizedBox(height: 16),
+        GlassCard(radius: 16, padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Descripcion completa', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)), const SizedBox(height: 6), Text('Full description del posting. Swipe up en deck pausa el dwell timer. Aqui iria el body real normalizado del ATS.', style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12, height: 1.4))])),
+        const SizedBox(height: 16),
+        SizedBox(height: 52, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: _p4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26))), onPressed: () { Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Aplicacion encolada, revisa en Apps'))); }, child: const Text('Apply con agente', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)))),
+      ]),
+    );
+  }
+}
+
+// ---------- APPLICATIONS (review queue) ----------
+class ApplicationsScreen extends StatelessWidget {
+  const ApplicationsScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [const Text('Aplicaciones', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)), const Spacer(), GlassCard(radius: 12, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), opacity: 0.12, child: Text('4 en revision', style: TextStyle(color: _p9.withOpacity(0.9), fontSize: 11, fontWeight: FontWeight.w700)))]),
+          const SizedBox(height: 12),
           Expanded(
             child: ListView(
               children: [
-                _msgTile('Jasmine', 'Hey! How are you?', '2m', true),
-                _msgTile('Yunieee', 'You matched! Say hi', '1h', false),
-                _msgTile('Anya', 'Sticker', '3h', false),
-                ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.person)),
-                  title: const Text('Sofia'),
-                  subtitle: const Text('Looking for new friends'),
-                  trailing: const Icon(Icons.more_horiz),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatDetail())),
-                ),
+                _appCard('Fathom Analytics', 'Senior Backend', 'awaiting_review', 'Resume tailored +12% keywords', _p8, context),
+                _appCard('Northwind', 'Platform Engineer', 'needs_attention', 'Falta respuesta: salary expectation', Colors.orange, context),
+                _appCard('Mercury', 'Staff Data', 'submitted', 'Enviada  •  verificada email', _p7, context),
+                _appCard('Acme Workday', 'Backend', 'filling_form', 'Agente llenando form  •  Gmail OTP auto', _p6, context),
               ],
             ),
           ),
@@ -777,50 +637,170 @@ class ChatScreen extends StatelessWidget {
     );
   }
 
-  Widget _msgTile(String name, String last, String time, bool unread) => ListTile(
-        leading: CircleAvatar(backgroundImage: NetworkImage('https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200')),
-        title: Text(name, style: TextStyle(fontWeight: unread ? FontWeight.w800 : FontWeight.w500)),
-        subtitle: Text(last, style: const TextStyle(fontSize: 13)),
-        trailing: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(time, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-          if (unread) Container(width: 8, height: 8, margin: const EdgeInsets.only(top: 4), decoration: const BoxDecoration(color: _tinderPink, shape: BoxShape.circle)),
-        ]),
+  Widget _appCard(String co, String role, String status, String sub, Color c, BuildContext ctx) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: GlassCard(
+          radius: 18,
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [Container(width: 10, height: 10, decoration: BoxDecoration(color: c, shape: BoxShape.circle)), const SizedBox(width: 8), Expanded(child: Text('$co  •  $role', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: c.withOpacity(0.18), borderRadius: BorderRadius.circular(12)), child: Text(status, style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.w700)))]),
+            const SizedBox(height: 6),
+            Text(sub, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11)),
+            const SizedBox(height: 10),
+            ClipRRect(borderRadius: BorderRadius.circular(10), child: Container(height: 56, color: Colors.white.withOpacity(0.06), child: Row(children: [Expanded(child: Padding(padding: const EdgeInsets.all(8), child: Text('Resume diff: 3 bullets ajustados, cover letter lista. Hash verificado.', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10))))]))),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: _p4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))), onPressed: () {}, child: const Text('Revisar', style: TextStyle(color: Colors.white, fontSize: 12)))),
+              const SizedBox(width: 8),
+              Expanded(child: OutlinedButton(style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.white.withOpacity(0.14)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))), onPressed: () {}, child: Text('Abandonar', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12)))),
+            ]),
+          ]),
+        ),
       );
 }
 
-class ChatDetail extends StatelessWidget {
-  const ChatDetail({super.key});
+// ---------- INTERVIEWS ----------
+class InterviewsScreen extends StatelessWidget {
+  const InterviewsScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Row(children: [CircleAvatar(backgroundImage: NetworkImage('https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200')), SizedBox(width: 8), Text('Jasmine 27')]),
-        actions: [IconButton(icon: const Icon(Icons.videocam_outlined), onPressed: () {}), IconButton(icon: const Icon(Icons.shield_outlined), onPressed: () {})],
-      ),
-      body: Column(children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Center(child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)), child: const Text('You matched with Jasmine on 03/08'))),
-              const SizedBox(height: 16),
-              Align(alignment: Alignment.centerLeft, child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(16)), child: const Text('Hey!'))),
-              const SizedBox(height: 8),
-              Align(alignment: Alignment.centerRight, child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: _tinderPink, borderRadius: BorderRadius.circular(16)), child: const Text('Hi Jasmine!', style: TextStyle(color: Colors.white)))),
-            ],
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Entrevistas', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+          Text('Detectadas desde tu inbox via mailbox sync', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11)),
+          const SizedBox(height: 12),
+          GlassCard(radius: 14, padding: const EdgeInsets.all(12), opacity: 0.10, child: Row(children: [const Icon(Icons.mail_outline, color: _p8, size: 18), const SizedBox(width: 8), Expanded(child: Text('3 entrevistas  •  2 pendientes de feedback', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12, fontWeight: FontWeight.w600))), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: _p8.withOpacity(0.9), borderRadius: BorderRadius.circular(12)), child: const Text('sync 2h', style: TextStyle(color: _p0, fontSize: 10, fontWeight: FontWeight.w700)))])),
+          const SizedBox(height: 12),
+          Expanded(
+            child: ListView(
+              children: [
+                _interview('Fathom Analytics', 'Senior Backend', 'On-site final  •  18 Sep', 'upcoming', 'Contar como te fue', context, true),
+                _interview('Northwind', 'Platform Engineer', 'Intro call done  •  12 Sep', 'done', 'Dar feedback', context, false),
+                _interview('Mercury', 'Staff Data', 'Tech interview  •  10 Sep', 'done', 'Dar feedback', context, false),
+              ],
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(children: [
-            Expanded(child: TextField(decoration: InputDecoration(hintText: 'Type a message', border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)), contentPadding: const EdgeInsets.symmetric(horizontal: 16)))),
-            const SizedBox(width: 8),
-            CircleAvatar(backgroundColor: _tinderPink, child: IconButton(icon: const Icon(Icons.send, color: Colors.white, size: 18), onPressed: () {})),
-          ]),
-        ),
-      ]),
+        ]),
+      ),
     );
   }
+
+  Widget _interview(String co, String role, String when, String state, String cta, BuildContext ctx, bool upcoming) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: GlassCard(
+          radius: 18,
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [Container(width: 40, height: 40, decoration: BoxDecoration(color: _p4.withOpacity(0.6), borderRadius: BorderRadius.circular(10)), child: Center(child: Text(co[0], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)))), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(co, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)), Text(role, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11))])), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: upcoming ? _p7.withOpacity(0.9) : Colors.white.withOpacity(0.10), borderRadius: BorderRadius.circular(12)), child: Text(state, style: TextStyle(color: upcoming ? Colors.white : Colors.white70, fontSize: 10, fontWeight: FontWeight.w700)))]),
+            const SizedBox(height: 8),
+            Text(when, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11)),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: _p4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+                onPressed: () => _callSheet(ctx, co),
+                icon: const Icon(Icons.phone, color: Colors.white, size: 16),
+                label: Text(cta, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ]),
+        ),
+      );
+
+  void _callSheet(BuildContext ctx, String co) => showModalBottomSheet(
+        context: ctx,
+        backgroundColor: _p1,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        builder: (_) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 16),
+            Row(children: [const OwlIcon(size: 40), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Agente te llamara sobre $co', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)), Text('Te preguntara como te fue, que te preguntaron y te dara tips', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11))]))]),
+            const SizedBox(height: 16),
+            SizedBox(width: double.infinity, height: 48, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: _p4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))), onPressed: () { Navigator.pop(ctx); ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Agente te llamara en 2 min sobre $co'))); }, child: const Text('Confirmar llamada', style: TextStyle(color: Colors.white)))),
+            const SizedBox(height: 8),
+            SizedBox(width: double.infinity, height: 48, child: OutlinedButton(style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.white.withOpacity(0.14)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))), onPressed: () => Navigator.pop(ctx), child: Text('Cancelar', style: TextStyle(color: Colors.white.withOpacity(0.8))))),
+          ]),
+        ),
+      );
+}
+
+// ---------- COACH CALLS ----------
+class CoachScreen extends StatefulWidget {
+  const CoachScreen({super.key});
+  @override
+  State<CoachScreen> createState() => _CoachScreenState();
+}
+
+class _CoachScreenState extends State<CoachScreen> {
+  bool ringing = false;
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Coach de entrevistas', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+          Text('El agente te llama, pregunta y mejora tus siguientes entrevistas', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11)),
+          const SizedBox(height: 14),
+          GlassCard(
+            radius: 18,
+            padding: const EdgeInsets.all(16),
+            child: Column(children: [
+              Row(children: [Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: _p8.withOpacity(0.9), shape: BoxShape.circle), child: const Icon(Icons.phone_in_talk, color: _p0, size: 20)), const SizedBox(width: 12), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Practicar ahora', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)), Text('Pide que te llame cuando quieras entrenar', style: TextStyle(color: Colors.white70, fontSize: 11))]))]),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(backgroundColor: _p4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))),
+                  onPressed: () => setState(() => ringing = true),
+                  icon: const Icon(Icons.call, color: Colors.white, size: 18),
+                  label: const Text('Pedir que me llame para practicar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                ),
+              ),
+              if (ringing) ...[
+                const SizedBox(height: 12),
+                Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: _p0.withOpacity(0.5), borderRadius: BorderRadius.circular(14), border: Border.all(color: _p8.withOpacity(0.3))), child: Row(children: [const SizedBox(width: 8, height: 8, child: CircularProgressIndicator(strokeWidth: 2, color: _p8)), const SizedBox(width: 10), const Expanded(child: Text('Llamando... el agente te contacta en 30s', style: TextStyle(color: Colors.white, fontSize: 12))), TextButton(onPressed: () => setState(() => ringing = false), child: const Text('Colgar', style: TextStyle(color: Colors.orange)))])),
+              ],
+            ]),
+          ),
+          const SizedBox(height: 16),
+          Text('Historial de llamadas', style: TextStyle(color: Colors.white.withOpacity(0.85), fontWeight: FontWeight.w700, fontSize: 13)),
+          const SizedBox(height: 8),
+          Expanded(
+            child: ListView(
+              children: [
+                _callTile('Feedback post-entrevista', 'Fathom  •  12 Sep  •  4 min', 'Tips: estructura STAR, cuantifica impacto, evita jerga interna', true),
+                _callTile('Simulacro tecnico', 'Practica  •  10 Sep  •  6 min', 'Score 7/10  •  Mejorar: system design tradeoffs', false),
+                _callTile('Debrief Mercury', 'Mercury  •  09 Sep  •  3 min', 'Tip: pregunta sobre on-call antes de cerrar', false),
+              ],
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _callTile(String title, String meta, String tip, bool latest) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: GlassCard(
+          radius: 16,
+          padding: const EdgeInsets.all(14),
+          opacity: latest ? 0.16 : 0.10,
+          child: Row(children: [
+            Container(width: 36, height: 36, decoration: BoxDecoration(color: _p5.withOpacity(0.6), shape: BoxShape.circle), child: const Icon(Icons.record_voice_over, color: Colors.white, size: 18)),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12)), Text(meta, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11)), const SizedBox(height: 4), Text(tip, style: TextStyle(color: _p8.withOpacity(0.9), fontSize: 11))])),
+            if (latest) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), decoration: BoxDecoration(color: _p8.withOpacity(0.9), borderRadius: BorderRadius.circular(8)), child: const Text('nuevo', style: TextStyle(color: _p0, fontSize: 10, fontWeight: FontWeight.w700))),
+          ]),
+        ),
+      );
 }
 
 // ---------- PROFILE ----------
@@ -832,79 +812,42 @@ class ProfileScreen extends StatelessWidget {
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(children: [
-          Stack(children: [
-            ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.network('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600', height: 360, width: double.infinity, fit: BoxFit.cover)),
-            Positioned(bottom: 12, left: 12, child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)), child: const Text('Santiago, 24', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)))),
-          ]),
-          const SizedBox(height: 16),
-          Row(children: [
-            Expanded(child: ElevatedButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InterestsScreen())), icon: const Icon(Icons.edit, color: Colors.white), label: const Text('Edit Profile', style: TextStyle(color: Colors.white)), style: ElevatedButton.styleFrom(backgroundColor: _tinderDark, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))))),
+          GlassCard(
+            radius: 20,
+            padding: const EdgeInsets.all(16),
+            child: Row(children: [
+              ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400', width: 72, height: 72, fit: BoxFit.cover)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Santiago, 24  •  Bogota', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)), const SizedBox(height: 4), Row(children: [Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.green.withOpacity(0.18), borderRadius: BorderRadius.circular(12)), child: const Row(children: [Icon(Icons.check_circle, color: Colors.greenAccent, size: 12), SizedBox(width: 4), Text('Gmail conectado', style: TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.w700))])), const SizedBox(width: 6), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.white.withOpacity(0.10), borderRadius: BorderRadius.circular(12)), child: const Text('2FA mail', style: TextStyle(color: Colors.white70, fontSize: 11)))]), Text('santiago@gmail.com  •  +57 300 *** 1234', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11))])),
+              const Icon(Icons.edit, color: Colors.white54, size: 18),
+            ]),
+          ),
+          const SizedBox(height: 14),
+          _profileRow(Icons.mail_outline, 'Gmail para OTP', 'agente lee codigos automaticamente', true),
+          _profileRow(Icons.sms_outlined, 'SMS 2FA', 'fallback si mail falla', false),
+          _profileRow(Icons.description_outlined, 'Master resume', 'ATS score 78/100', true),
+          _profileRow(Icons.work_outline, 'Preferencias', 'Remote, Go, €70k floor', true),
+          _profileRow(Icons.shield_outlined, 'Privacidad', 'Revocar Gmail, borrar datos', false),
+          const SizedBox(height: 14),
+          SizedBox(width: double.infinity, height: 48, child: OutlinedButton(style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.white.withOpacity(0.14)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))), onPressed: () {}, child: Text('Cerrar sesion', style: TextStyle(color: Colors.white.withOpacity(0.8))))),
+          const SizedBox(height: 90),
+        ]),
+      ),
+    );
+  }
+
+  Widget _profileRow(IconData i, String t, String s, bool on) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: GlassCard(
+          radius: 16,
+          padding: const EdgeInsets.all(14),
+          opacity: 0.10,
+          child: Row(children: [
+            Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), borderRadius: BorderRadius.circular(10)), child: Icon(i, color: Colors.white, size: 18)),
             const SizedBox(width: 12),
-            Expanded(child: OutlinedButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())), icon: const Icon(Icons.settings), label: const Text('Settings'))),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(t, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)), Text(s, style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11))])),
+            Container(width: 10, height: 10, decoration: BoxDecoration(color: on ? _p8 : Colors.white24, shape: BoxShape.circle)),
           ]),
-          const SizedBox(height: 16),
-          _profileCard('Basics', ['Engineer', 'Bogota', 'Hybrid']),
-          _profileCard('Work mode', ['Remote', 'EU timezone']),
-          const SizedBox(height: 80),
-        ]),
-      ),
-    );
-  }
-
-  Widget _profileCard(String title, List<String> chips) => Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)]),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, children: chips.map((c) => Chip(label: Text(c, style: const TextStyle(fontSize: 12)))).toList()),
-        ]),
+        ),
       );
-}
-
-class InterestsScreen extends StatefulWidget {
-  const InterestsScreen({super.key});
-  @override
-  State<InterestsScreen> createState() => _InterestsScreenState();
-}
-
-class _InterestsScreenState extends State<InterestsScreen> {
-  final all = ['Freelancing', 'Photography', 'Singing', 'Writing', 'Travel', 'Music', 'Gaming', 'Cooking', 'Sport', 'Art', 'Tech', 'Design', 'Investing', 'Entrepreneurship', 'Choir', 'Cosplay', 'Sneakers', 'Batik', 'Entrepreneurship'];
-  final sel = <String>{};
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)), title: const Text('Interests'), actions: [IconButton(icon: const Icon(Icons.check, color: Colors.white), onPressed: () => Navigator.pop(context), style: IconButton.styleFrom(backgroundColor: _tinderDark))]),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Interests', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)), Text('${sel.length} of 10', style: const TextStyle(color: Colors.grey))]),
-          const SizedBox(height: 12),
-          TextField(decoration: InputDecoration(prefixIcon: const Icon(Icons.search), hintText: 'Search', border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)), filled: true, fillColor: Colors.grey.shade100)),
-          const SizedBox(height: 12),
-          Expanded(child: SingleChildScrollView(child: Wrap(spacing: 8, runSpacing: 8, children: all.map((e) => ChoiceChip(label: Text(e), selected: sel.contains(e), onSelected: (v) => setState(() { if (v) sel.add(e); else sel.remove(e); }), selectedColor: _tinderPink, labelStyle: TextStyle(color: sel.contains(e) ? Colors.white : Colors.black54))).toList()))),
-        ]),
-      ),
-    );
-  }
-}
-
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(children: const [
-        ListTile(leading: Icon(Icons.shield), title: Text('Safety & Privacy'), trailing: Icon(Icons.chevron_right)),
-        ListTile(leading: Icon(Icons.notifications), title: Text('Notifications'), trailing: Icon(Icons.chevron_right)),
-        ListTile(leading: Icon(Icons.language), title: Text('Language'), trailing: Icon(Icons.chevron_right)),
-        Divider(),
-        ListTile(leading: Icon(Icons.logout, color: Colors.red), title: Text('Log out', style: TextStyle(color: Colors.red))),
-        ListTile(leading: Icon(Icons.delete, color: Colors.red), title: Text('Delete account', style: TextStyle(color: Colors.red))),
-      ]),
-    );
-  }
 }
