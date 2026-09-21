@@ -763,6 +763,50 @@ class _HomeShellState extends State<HomeShell> {
 
 // Deck. Job cards on white, Bumble card discipline.
 
+String brandLogo(String company) {
+  const map = {
+    'Rappi': 'https://www.google.com/s2/favicons?domain=rappi.com&sz=128',
+    'Google': 'https://www.google.com/s2/favicons?domain=google.com&sz=128',
+    'Nubank': 'https://www.google.com/s2/favicons?domain=nubank.com.br&sz=128',
+    'Platzi': 'https://www.google.com/s2/favicons?domain=platzi.com&sz=128',
+  };
+  return map[company] ?? 'https://www.google.com/s2/favicons?domain=gmail.com&sz=128';
+}
+
+class CompanyMark extends StatelessWidget {
+  final String company;
+  final String mono;
+  final double size;
+  const CompanyMark({super.key, required this.company, required this.mono, this.size = 44});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(size * 0.27),
+        border: Border.all(color: _line),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.27),
+        child: Image.network(
+          brandLogo(company),
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            color: _tint,
+            child: Center(
+              child: Text(mono, style: const TextStyle(color: _navy, fontSize: 18, fontWeight: FontWeight.w800)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class JobItem {
   final String title;
   final String company;
@@ -1013,14 +1057,7 @@ class _DeckScreenState extends State<DeckScreen> with SingleTickerProviderStateM
                                     const SizedBox(height: 12),
                                     Row(
                                       children: [
-                                        Container(
-                                          width: 44,
-                                          height: 44,
-                                          decoration: BoxDecoration(color: _tint, borderRadius: BorderRadius.circular(12)),
-                                          child: Center(
-                                            child: Text(j.mono, style: const TextStyle(color: _navy, fontSize: 18, fontWeight: FontWeight.w800)),
-                                          ),
-                                        ),
+                                        CompanyMark(company: j.company, mono: j.mono),
                                         const SizedBox(width: 10),
                                         Expanded(
                                           child: Column(
@@ -1320,10 +1357,10 @@ class ApplicationsScreen extends StatelessWidget {
         children: [
           const SectionHead(title: 'Review queue', sub: 'Every tailored artifact waits for your approval. No approve all.'),
           const SizedBox(height: 14),
-          _app('Fathom Analytics', 'Senior Backend', 'AWAITING REVIEW', 'Resume plus 12 percent keywords. Cover letter ready.', _navy, _tint),
-          _app('Northwind', 'Platform Engineer', 'NEEDS ATTENTION', 'Missing answer: salary expectation.', _amberInk, _amberBg),
-          _app('Mercury', 'Staff Data', 'SUBMITTED', 'Sent and verified by confirmation email.', _green, _greenBg),
-          _app('Acme Workday', 'Backend', 'FILLING FORM', 'Agent filling form. Gmail OTP automatic.', _blue, _tint),
+          _app('Rappi', 'Senior Backend', 'AWAITING REVIEW', 'Resume plus 12 percent keywords. Cover letter ready.', _navy, _tint),
+          _app('Google', 'Frontend Engineer', 'NEEDS ATTENTION', 'Missing answer: salary expectation.', _amberInk, _amberBg),
+          _app('Nubank', 'Platform Engineer', 'SUBMITTED', 'Sent and verified by confirmation email.', _green, _greenBg),
+          _app('Platzi', 'Staff Data', 'FILLING FORM', 'Agent filling form. Gmail OTP automatic.', _blue, _tint),
         ],
       ),
     );
@@ -1338,6 +1375,8 @@ class ApplicationsScreen extends StatelessWidget {
           children: [
             Row(
               children: [
+                CompanyMark(company: co, mono: co.isEmpty ? '?' : co[0], size: 32),
+                const SizedBox(width: 8),
                 Expanded(child: Text('$co  •  $role', style: const TextStyle(color: _ink, fontWeight: FontWeight.w700, fontSize: 14))),
                 StatusPill(label: status, fg: fg, bg: bg),
               ],
@@ -1397,9 +1436,9 @@ class InterviewsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          _row(context, 'Fathom Analytics', 'Senior Backend', 'Final on site  •  18 Sep', 'UPCOMING', _navy, _tint, 'Share how it went', true),
-          _row(context, 'Northwind', 'Platform Engineer', 'Intro call done  •  12 Sep', 'DONE', _muted, _wash, 'Give feedback', false),
-          _row(context, 'Mercury', 'Staff Data', 'Technical  •  10 Sep', 'DONE', _muted, _wash, 'Give feedback', false),
+          _row(context, 'Rappi', 'Senior Backend', 'Final on site  •  18 Sep', 'UPCOMING', _navy, _tint, 'Share how it went', true),
+          _row(context, 'Google', 'Frontend Engineer', 'Intro call done  •  12 Sep', 'DONE', _muted, _wash, 'Give feedback', false),
+          _row(context, 'Nubank', 'Platform Engineer', 'Technical  •  10 Sep', 'DONE', _muted, _wash, 'Give feedback', false),
         ],
       ),
     );
@@ -1414,12 +1453,7 @@ class InterviewsScreen extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(color: _tint, borderRadius: BorderRadius.circular(12)),
-                  child: Center(child: Text(co[0], style: const TextStyle(color: _navy, fontWeight: FontWeight.w800, fontSize: 16))),
-                ),
+                CompanyMark(company: co, mono: co.isEmpty ? '?' : co[0], size: 42),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
