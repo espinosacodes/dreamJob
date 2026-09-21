@@ -23,20 +23,24 @@ class DreamJobApp extends StatelessWidget {
   const DreamJobApp({super.key});
   @override
   Widget build(BuildContext context) {
+    final light = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: Colors.white,
+      colorScheme: ColorScheme.fromSeed(seedColor: _navy, brightness: Brightness.light),
+      fontFamily: 'Roboto',
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: _ink,
+      ),
+    );
     return MaterialApp(
       title: 'dreamJob',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: Colors.white,
-        colorScheme: ColorScheme.fromSeed(seedColor: _navy),
-        fontFamily: 'Roboto',
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          foregroundColor: _ink,
-        ),
-      ),
+      theme: light,
+      darkTheme: light,
+      themeMode: ThemeMode.light,
       home: const SplashScreen(),
     );
   }
@@ -760,6 +764,7 @@ class JobItem {
   final String title;
   final String company;
   final String mono;
+  final String photo;
   final String location;
   final String comp;
   final String compProv;
@@ -772,6 +777,7 @@ class JobItem {
     required this.title,
     required this.company,
     required this.mono,
+    required this.photo,
     required this.location,
     required this.comp,
     required this.compProv,
@@ -799,34 +805,50 @@ class _DeckScreenState extends State<DeckScreen> with SingleTickerProviderStateM
   final jobs = const [
     JobItem(
       title: 'Senior Backend Engineer',
-      company: 'Fathom Analytics',
-      mono: 'F',
-      location: 'Remote  •  EU timezone UTC+0 to +3',
-      comp: 'EUR 95k to 120k',
+      company: 'Rappi',
+      mono: 'R',
+      photo: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80&auto=format&fit=crop',
+      location: 'Bogota  •  Hybrid 2 days  •  Calle 93 office',
+      comp: 'USD 80k to 110k',
       compProv: 'posted',
-      posted: '3 days ago',
+      posted: '2 days ago',
       stack: ['Go', 'Kubernetes', 'Postgres', 'gRPC', 'Redis', '+2'],
-      bullets: ['Own the payments ingestion pipeline', '5 person platform team, no on call', 'Series B, 60 people'],
-      reasons: ['Go plus Kubernetes on your list', 'Remote in band', 'Above comp floor'],
-      warning: 'Title says Remote, body says 3 days in office',
+      bullets: ['Own the payments ingestion pipeline', '5 person platform team, no on call', 'Series F, 5000 people'],
+      reasons: ['Go plus Kubernetes on your list', 'Bogota hybrid accepted', 'Above comp floor'],
+    ),
+    JobItem(
+      title: 'Frontend Engineer',
+      company: 'Google',
+      mono: 'G',
+      photo: 'https://images.unsplash.com/photo-1573164713988-8665fc963095?w=800&q=80&auto=format&fit=crop',
+      location: 'Bogota  •  Hybrid  •  Calle 100 campus',
+      comp: 'USD 120k to 160k',
+      compProv: 'posted',
+      posted: '1 day ago',
+      stack: ['TypeScript', 'Angular', 'RxJS', 'GCP'],
+      bullets: ['Build advertiser console used daily', 'Large team, strong mentorship', 'L4 band, visa support'],
+      reasons: ['TypeScript on your list', 'Hybrid in Bogota', 'Top comp band'],
+      warning: 'Title says Hybrid, body says 3 days in office',
     ),
     JobItem(
       title: 'Platform Engineer',
-      company: 'Northwind',
+      company: 'Nubank',
       mono: 'N',
-      location: 'Bogota  •  Hybrid 2 days',
-      comp: 'USD 80k to 110k',
+      photo: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&q=80&auto=format&fit=crop',
+      location: 'Remote  •  LATAM  •  Sao Paulo hub',
+      comp: 'USD 90k to 130k',
       compProv: 'estimated',
-      posted: '1 day ago',
+      posted: '3 days ago',
       stack: ['Go', 'AWS', 'Terraform', 'Docker'],
       bullets: ['Build the internal developer platform', '200 engineers as users', 'No visa needed'],
-      reasons: ['Strong Go match', 'Hybrid accepted', 'Comp in range'],
+      reasons: ['Strong Go match', 'Remote LATAM', 'Comp in range'],
     ),
     JobItem(
       title: 'Staff Engineer, Data',
-      company: 'Mercury',
-      mono: 'M',
-      location: 'Remote  •  LATAM',
+      company: 'Platzi',
+      mono: 'P',
+      photo: 'https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=800&q=80&auto=format&fit=crop',
+      location: 'Remote  •  LATAM  •  Bogota meetups',
       comp: 'No range posted',
       compProv: '',
       posted: '5 days ago',
@@ -951,6 +973,41 @@ class _DeckScreenState extends State<DeckScreen> with SingleTickerProviderStateM
                                       ),
                                     ),
                                     const SizedBox(height: 14),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Stack(
+                                        children: [
+                                          Image.network(
+                                            j.photo,
+                                            height: 180,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Container(
+                                              height: 180,
+                                              color: _tint,
+                                              child: const Center(child: Icon(Icons.business_outlined, color: _navy, size: 32)),
+                                            ),
+                                          ),
+                                          Positioned(
+                                            left: 10,
+                                            bottom: 10,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                              decoration: BoxDecoration(color: Colors.black.withOpacity(0.62), borderRadius: BorderRadius.circular(20)),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.verified, color: Colors.white, size: 13),
+                                                  const SizedBox(width: 4),
+                                                  Text('${j.company} office', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
                                     Row(
                                       children: [
                                         Container(
@@ -1208,6 +1265,17 @@ class JobDetail extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.network(
+              job.photo,
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(height: 200, color: _tint),
+            ),
+          ),
+          const SizedBox(height: 14),
           Text(job.title, style: const TextStyle(color: _ink, fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
           const SizedBox(height: 6),
           Text('${job.company}  •  ${job.location}', style: const TextStyle(color: _muted, fontSize: 13)),
