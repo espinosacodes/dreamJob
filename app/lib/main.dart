@@ -129,7 +129,7 @@ class FrostedTop extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
   const FrostedTop({super.key, required this.title, this.leading, this.actions});
   @override
-  Size get preferredSize => const Size.fromHeight(60);
+  Size get preferredSize => const Size.fromHeight(52);
   @override
   Widget build(BuildContext context) {
     return ClipRect(
@@ -143,6 +143,9 @@ class FrostedTop extends StatelessWidget implements PreferredSizeWidget {
           child: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
+            toolbarHeight: 52,
+            leadingWidth: 40,
+            titleSpacing: 4,
             leading: leading,
             title: title,
             actions: actions,
@@ -160,8 +163,8 @@ class CircleBack extends StatelessWidget {
     return GestureDetector(
       onTap: () => Navigator.maybePop(context),
       child: Container(
-        width: 40,
-        height: 40,
+        width: 32,
+        height: 32,
         decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
@@ -170,7 +173,7 @@ class CircleBack extends StatelessWidget {
             BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12),
           ],
         ),
-        child: const Icon(Icons.arrow_back, color: _ink, size: 20),
+        child: const Icon(Icons.arrow_back, color: _ink, size: 16),
       ),
     );
   }
@@ -906,17 +909,17 @@ class _DeckScreenState extends State<DeckScreen> with SingleTickerProviderStateM
       backgroundColor: Colors.white,
       appBar: FrostedTop(
         leading: const Padding(
-          padding: EdgeInsets.only(left: 8),
-          child: OwlBadge(size: 32),
+          padding: EdgeInsets.only(left: 12),
+          child: Center(child: OwlBadge(size: 26)),
         ),
         title: Text(
           '${top + 1} of ${jobs.length}  •  Daily deck',
-          style: const TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600),
+          style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w600),
         ),
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 12),
-            child: StatusPill(label: 'STRONG', fg: _navy, bg: _tint),
+            child: Center(child: StatusPill(label: 'STRONG', fg: _navy, bg: _tint)),
           ),
         ],
       ),
