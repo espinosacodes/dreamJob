@@ -1,0 +1,72 @@
+# dod-profile.toml — BMAD GovernanceLayer (initial governance) for dreamJob
+# Configurable Definition of Done per story type.
+# Each criterion becomes a mandatory Acceptance Criterion when a story is created
+# and a blocking checkpoint before the story can move to review.
+# See docs/governance-initial.md for the full workflow.
+
+version = 1
+
+[meta]
+project = "dreamJob"
+spec = "docs/01-product-spec.md"
+architecture = "docs/02-architecture.md"
+contract = "contract/"
+
+# Generic criteria applied to every story regardless of type
+[profiles.generic]
+label = "Generic (all stories)"
+criteria = [
+  { id = "DOD-01", category = "traceability", title = "Attributable and auditable", check = "Every state change carries its source and is traceable to the user or system decision" },
+  { id = "DOD-02", category = "validation", title = "Input validation at trust boundary", check = "All external inputs validated, invalid inputs rejected with clear reason" },
+  { id = "DOD-03", category = "testing", title = "ATDD checklist before implementation", check = "Acceptance test checklist completed before first production commit (red phase)" },
+  { id = "DOD-04", category = "testing", title = "Tests pass and cover acceptance criteria", check = "Automated tests for all ACs pass, no skipped or todo tests" },
+  { id = "DOD-05", category = "contract", title = "Contract types generated not transcribed", check = "No hand-written mirror of OpenAPI or JSON Schema types, types generated from contract/" },
+]
+
+[profiles.api_service]
+label = "API and service story (Go dreamjob-server)"
+extends = "generic"
+criteria = [
+  { id = "DOD-API-01", category = "security", title = "Auth and no secret in logs or prompts", check = "Bearer token required, no password or token crosses model boundary, no secret in logs or transcripts" },
+  { id = "DOD-API-02", category = "validation", title = "Request validation and error envelope", check = "Schema validation on body, query and params, single error envelope with machine code plus human reason" },
+  { id = "DOD-API-03", category = "compliance", title = "Rate limit and cap respected", check = "Ingestion respects rate limits, submissions_per_hour capped at 5, sidecar bound to loopback only" },
+  { id = "DOD-API-04", category = "i18n", title = "No hardcoded user-facing strings", check = "All user-facing strings via i18n, no hardcoded literals in responses or errors" },
+]
+
+[profiles.core_rust]
+label = "Core logic story (Rust dreamjob-core)"
+extends = "generic"
+criteria = [
+  { id = "DOD-CORE-01", category = "purity", title = "Pure function with no I/O or clock", check = "No network, no filesystem beyond handed paths, no SystemTime::now, time is an input" },
+  { id = "DOD-CORE-02", category = "testing", title = "Deterministic and property tested", check = "Same input produces same output, property tests for matcher and normalizer where applicable" },
+  { id = "DOD-CORE-03", category = "contract", title = "Versioned and re-runnable", check = "Core version recorded, normalization re-runnable from stored raw payload without refetch" },
+]
+
+[profiles.frontend_flutter]
+label = "Frontend story (Flutter dreamjob-app)"
+extends = "generic"
+criteria = [
+  { id = "DOD-FE-01", category = "uiux", title = "Approved UI/UX design consulted", check = "Design artifact from docs/06-swipe-ui.md or docs/11-frontend.md referenced by id or path and consulted before implementation" },
+  { id = "DOD-FE-02", category = "lifecycle", title = "Component lifecycle handled", check = "Mount, unmount, loading, empty and error states handled, no leaked subscriptions or timers" },
+  { id = "DOD-FE-03", category = "accessibility", title = "Accessibility baseline", check = "Every gesture has button equivalent, meaning not by color alone, respects font scale and reduced motion" },
+  { id = "DOD-FE-04", category = "contract", title = "Generated models only", check = "Models from contract/openapi.yaml generated, never hand-written, card_version recorded on SwipeEvent" },
+]
+
+[profiles.browser_sidecar]
+label = "Browser automation story (Node Playwright sidecar)"
+extends = "generic"
+criteria = [
+  { id = "DOD-BRW-01", category = "security", title = "Credential refs not secrets", check = "Plans carry credential references, sidecar resolves from OS keychain after model turn, no prompt contains password" },
+  { id = "DOD-BRW-02", category = "security", title = "No submit without human token", check = "Sidecar rejects submit without single-use human token, loopback only, no bypass flag" },
+  { id = "DOD-BRW-03", category = "determinism", title = "Deterministic recipes first", check = "Checked-in selectors for ATS platform used first, model only picks which stored answer goes where" },
+]
+
+# Mapping from story type to profile key, used by bmad-create-story and bmad-dev-story
+[routing]
+default = "generic"
+rules = [
+  { when = "title or labels contain 'API' or 'route' or 'endpoint' or 'ingest' or 'server' or 'Go'", use = "api_service" },
+  { when = "title or labels contain 'core' or 'Rust' or 'normalize' or 'matcher' or 'fingerprint' or 'render'", use = "core_rust" },
+  { when = "title or labels contain 'Flutter' or 'app' or 'deck' or 'card' or 'swipe' or 'review' or 'UI'", use = "frontend_flutter" },
+  { when = "title or labels contain 'browser' or 'sidecar' or 'Playwright' or 'Workday' or 'form fill'", use = "browser_sidecar" },
+]
